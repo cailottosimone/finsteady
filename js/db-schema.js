@@ -36,12 +36,15 @@ export function impostaNomeDatabase(nome) {
 // automaticamente l'eccesso quando un Piano, in Registra Entrata, non copre l'intera
 // entrata — Conto o Fondo designato, invece di lasciarlo sempre come liquidità residua
 // generica). Nessuno store esistente viene toccato o modificato.
-// v8 → v9: aggiunta additiva degli store 'syncOutbox', 'syncMeta' e 'syncConflitti' (Fase 6 —
-// Sync Cloud via Supabase). Sono store puramente tecnici di appoggio per il motore di
-// sincronizzazione (js/sync/syncEngine.js), non entità del modello del FDD: coda delle
-// modifiche locali non ancora inviate, ultimo timestamp remoto noto per record (per rilevare
-// conflitti), e conflitti in attesa di una scelta esplicita dell'utente. Nessuno store
-// esistente viene toccato o modificato.
+// v8 → v9: aggiunta additiva, poi rimossa (vedi nota sotto), degli store 'syncOutbox',
+// 'syncMeta' e 'syncConflitti' per una prima versione del Sync Cloud a sincronizzazione
+// automatica per singolo record. Sostituita da un modello più semplice ("Carica sul Cloud" /
+// "Scarica dal Cloud" a istantanea completa, js/sync/syncEngine.js) che non ha bisogno di
+// nessuna coda o stato tecnico locale: usa direttamente domain/backup.js. Questi tre store non
+// compaiono più qui sotto, quindi non vengono più creati su database nuovi; su database che li
+// avevano già creati restano semplicemente inutilizzati e vuoti (rimuoverli davvero
+// richiederebbe eliminarli in un upgrade IndexedDB, non necessario: non contengono mai dati
+// dell'utente, solo stato tecnico transitorio).
 export const DB_VERSION = 9;
 
 // Ogni voce: { nome store, keyPath, indici: [{ nome, campo, opzioni }] }
@@ -239,31 +242,6 @@ export const STORE_DEFINITIONS = [
   {
     nome: 'impostazioniAllocazione',
     keyPath: 'id',
-    indici: []
-  },
-  // Store tecnici di appoggio per il Sync Cloud (Fase 6, js/sync/). Non sono entità del FDD e
-  // non vengono mai lette/scritte dai moduli di dominio: solo da js/sync/syncEngine.js.
-  // Coda delle modifiche locali non ancora inviate al server (chiave: "<store>::<idRecord>",
-  // così una modifica successiva alla stessa entità sovrascrive quella in coda invece di
-  // accumularsi).
-  {
-    nome: 'syncOutbox',
-    keyPath: 'chiave',
-    indici: []
-  },
-  // Ultimo timestamp remoto noto per ciascun record già sincronizzato almeno una volta (chiave:
-  // "<store>::<idRecord>"): usato come base per rilevare, al prossimo invio, se qualcun altro ha
-  // modificato lo stesso record nel frattempo.
-  {
-    nome: 'syncMeta',
-    keyPath: 'chiave',
-    indici: []
-  },
-  // Conflitti rilevati (stessa chiave di syncOutbox/syncMeta) in attesa che l'utente scelga se
-  // tenere la versione locale o quella remota — mai risolti automaticamente.
-  {
-    nome: 'syncConflitti',
-    keyPath: 'chiave',
     indici: []
   }
 ];

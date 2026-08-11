@@ -67,10 +67,7 @@ function costruisciNav(profiloAttivo) {
   });
 }
 
-let vistaCorrenteChiave = null;
-
 async function mostraVista(chiave) {
-  vistaCorrenteChiave = chiave;
   nav.querySelectorAll('.nav-btn, .nav-btn-impostazioni').forEach((btn) => {
     btn.classList.toggle('attivo', btn.dataset.vista === chiave);
   });
@@ -81,14 +78,6 @@ async function mostraVista(chiave) {
 // dalla Dashboard, "Mese" da dentro Budget) di navigare senza che quella vista debba conoscere
 // i dettagli del router.
 window.mostraVista = mostraVista;
-
-// Esposto globalmente per il motore di Sync Cloud (js/sync/syncEngine.js): quando arriva una
-// modifica da un altro dispositivo, ri-renderizza semplicemente la vista già aperta, così
-// l'utente la vede aggiornata senza dover ricaricare la pagina. Nessun effetto se il Sync non è
-// configurato (la funzione non viene mai chiamata in quel caso).
-window.aggiornaVistaCorrente = () => {
-  if (vistaCorrenteChiave) mostraVista(vistaCorrenteChiave);
-};
 
 // Bootstrap Profili: DEVE avvenire prima di qualunque chiamata a storage.js (che mette in
 // cache la connessione al database al primo utilizzo — cambiare database dopo non avrebbe più

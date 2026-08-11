@@ -1,5 +1,45 @@
 # Changelog — Financial Planner
 
+## v0.28-001 — Sync Cloud riprogettato: "Carica"/"Scarica" a istantanea completa
+
+Sostituisce il motore a sincronizzazione automatica per singolo record (v0.27-001 → v0.27-004),
+rivelatosi troppo complesso da verificare e da fidarsi. Nuovo modello, uguale nello spirito a
+Vacation Planner e Preventivi 3D dell'utente: due pulsanti, un'azione ciascuno, nessuna
+sincronizzazione silenziosa in background, nessuna scelta da fare dopo aver premuto il
+pulsante.
+
+### Rimosso
+- Sincronizzazione automatica in background (hook `onScrittura` su `storage.js`, coda
+  `syncOutbox`, sottoscrizione realtime, rilevamento conflitti per singolo record e relativo
+  store `syncConflitti`). `storage.js` torna esattamente come prima della Fase 6.
+- Store IndexedDB tecnici `syncOutbox`, `syncMeta`, `syncConflitti`: non più creati su database
+  nuovi (restano, vuoti e inutilizzati, sui database che li avevano già creati — non contengono
+  mai dati dell'utente).
+- Tabella `sync_records` e funzione `fp_sync_upsert` lato Supabase: sostituite da un'unica
+  tabella più semplice (vedi sotto). `supabase/schema.sql` le rimuove da sé se già presenti.
+
+### Aggiunto
+- **"Carica sul Cloud"**: esporta l'intero database del Profilo attivo con la stessa funzione
+  già usata dal Backup locale (`domain/backup.js` → `esportaTutto()`) e lo scrive in un'unica
+  riga Supabase per l'account e il Profilo correnti, sovrascrivendo quella precedente. Nessuna
+  domanda successiva.
+- **"Scarica dal Cloud"**: legge quella riga e la applica in locale con `importaTutto()` (la
+  stessa funzione già usata per importare un Backup locale) — sostituisce interamente i dati
+  del dispositivo. Nessuna domanda successiva.
+- **Indicatore di stato Cloud in Dashboard**: badge cliccabile (apre direttamente la tab Sync)
+  che mostra se il Cloud è collegato e, al passaggio del mouse, l'ultimo caricamento/
+  scaricamento. Assente se il Sync non è nemmeno configurato.
+- Tabella Supabase `finsteady.cloud_snapshot`: chiave primaria composta
+  `(user_id, profilo_locale_id)`, colonna `payload jsonb` con l'intero database esportato, Row
+  Level Security invariata nello spirito (ogni utente vede solo le proprie righe). Niente più
+  funzione PL/pgSQL, niente più pubblicazione realtime: solo tabella e policy.
+
+### Corretto (ereditato da v0.27-004, resta valido)
+- `profilo_locale_id` continua a essere il **nome** del Profilo attivo normalizzato, non il suo
+  id locale — l'id è generato in modo indipendente su ogni dispositivo, quindi diverso anche per
+  lo stesso Profilo su macchine diverse; il nome è invece quello che l'utente tiene
+  deliberatamente uguale tra i dispositivi da collegare.
+
 ## v0.27-004 — Correzione critica: la sincronizzazione tra dispositivi non funzionava
 
 ### Corretto

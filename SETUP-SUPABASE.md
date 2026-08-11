@@ -4,6 +4,12 @@ Il Sync Cloud è opzionale: finché non completi questa procedura, `js/sync/conf
 vuoto e l'app funziona esattamente come prima, solo in locale (IndexedDB). Nessuna funzionalità
 esistente cambia.
 
+Modello volutamente semplice: due pulsanti nella tab **Sync** di Impostazioni, **Carica sul
+Cloud** e **Scarica dal Cloud**. Nessuna sincronizzazione automatica in background, nessuna
+risoluzione di conflitti: premi un pulsante, l'operazione si completa, fine — non ti chiede
+altro dopo. Carica sovrascrive il Cloud con i dati di questo dispositivo; Scarica sostituisce
+interamente i dati di questo dispositivo con quelli del Cloud.
+
 ## 1. Crea il progetto Supabase
 
 1. Vai su [supabase.com](https://supabase.com), crea un account (o accedi) e crea un nuovo
@@ -20,21 +26,22 @@ esistente cambia.
    incollalo nell'editor.
 3. Premi **Run**. Il messaggio atteso è **"Success. No rows returned"** — è normale, non un
    errore: `create table`, `create policy` e simili non restituiscono righe. Lo script crea uno
-   schema dedicato **`finsteady`** (non il default `public`), con dentro la tabella
-   `sync_records`, le policy di Row Level Security e la funzione `fp_sync_upsert` usata per
-   sincronizzare.
+   schema dedicato **`finsteady`** (non il default `public`), con dentro un'unica tabella
+   `cloud_snapshot` e le sue policy di Row Level Security.
 
-Questo script è idempotente (puoi rieseguirlo senza problemi se serve).
+Questo script è idempotente: puoi rieseguirlo senza problemi in qualunque momento, anche più
+volte — le prime righe puliscono da sole eventuali oggetti creati da versioni precedenti dello
+script (una prima versione, con sincronizzazione automatica per singolo record, è stata
+abbandonata perché inutilmente complessa e più difficile da verificare).
 
 **Verifica**: nel Table Editor, imposta lo schema in alto su **finsteady** (non "public" — è un
-menu a tendina separato) e controlla che compaia `sync_records`. In alternativa, nell'SQL
-Editor: `select * from finsteady.sync_records;` non deve dare errore "relation does not exist".
+menu a tendina separato) e controlla che compaia `cloud_snapshot`. In alternativa, nell'SQL
+Editor: `select * from finsteady.cloud_snapshot;` non deve dare errore "relation does not
+exist" (una tabella vuota, 0 righe, va benissimo finché non premi "Carica" la prima volta).
 
-**Se avevi già eseguito una versione precedente dello script** (quella che usava ancora lo
-schema `public`): esegui anche `supabase/cleanup-public.sql` una volta, per rimuovere la vecchia
-tabella `public.sync_records` e la funzione `public.fp_sync_upsert` rimaste lì — altrimenti
-restano come doppioni inutilizzati (l'app da questa versione in poi parla solo con `finsteady`,
-non con `public`). Se il tuo progetto è nuovo, salta questo passaggio: non c'è nulla da pulire.
+**Se avevi eseguito la primissima versione dello script** (quella con ancora lo schema
+`public`): esegui anche `supabase/cleanup-public.sql` una volta, per rimuovere quei vecchi
+oggetti. Se il tuo progetto è più recente, salta questo passaggio.
 
 ## 3. Esponi lo schema "finsteady" alle API (passaggio manuale, obbligatorio)
 
@@ -47,8 +54,8 @@ finché non lo esponi esplicitamente — questo non si può fare via SQL, solo d
 3. Aggiungi **`finsteady`** all'elenco (di solito c'è già solo `public`) e salva.
 
 Se salti questo passaggio, l'app mostrerà un errore tipo *"The schema must be one of the
-following: public"* non appena provi ad accedere o sincronizzare, anche se il passaggio 2 sopra
-è andato a buon fine.
+following: public"* non appena provi a caricare o scaricare, anche se il passaggio 2 sopra è
+andato a buon fine.
 
 ## 4. Abilita l'accesso email/password
 
@@ -77,26 +84,22 @@ accedere invece del messaggio "non configurato".
 
 ## Collegare più dispositivi allo stesso Profilo
 
-Perché due dispositivi si sincronizzino tra loro serve **sia** lo stesso account (email/password
-usati per accedere) **sia** un Profilo attivo con **esattamente lo stesso nome** (non conta
-l'ordine con cui li hai creati). La tab Sync mostra sempre a quale Profilo sei collegato, per
-verificarlo a colpo d'occhio.
+Perché due dispositivi condividano gli stessi dati serve **sia** lo stesso account
+(email/password usati per accedere) **sia** un Profilo attivo con **esattamente lo stesso
+nome** (non conta l'ordine con cui li hai creati). La tab Sync mostra sempre a quale Profilo sei
+collegato, per verificarlo a colpo d'occhio; lo stesso indicatore compare anche in Dashboard.
 
-Passaggi consigliati per collegare un secondo dispositivo (es. su un MacBook diverso, o dopo
-aver ripetuto tutta questa procedura da capo):
+Passaggi per collegare un secondo dispositivo (es. un MacBook diverso):
 
-1. **Sul dispositivo che ha già i tuoi dati** (quello che usavi prima di avere il Sync): completa
-   il setup, poi nella tab Sync premi **"Carica sul Cloud"**. Questo passaggio è necessario anche
-   se il Sync sembra già "attivo": la sincronizzazione automatica in background accoda solo le
-   modifiche fatte *da quando* il Sync è configurato — i dati che avevi già prima non sarebbero
-   altrimenti mai stati inviati al Cloud.
+1. **Sul dispositivo che ha già i tuoi dati**: completa il setup, poi nella tab Sync premi
+   **"Carica sul Cloud"**.
 2. **Sul nuovo dispositivo**: copia lo stesso repository, compila `js/sync/config.js` con lo
    stesso URL/chiave, assicurati che il Profilo attivo abbia lo stesso nome del primo
    dispositivo (rinominalo se serve, dalla vista Profili), accedi con lo stesso account nella tab
-   Sync, poi premi **"Scarica dal Cloud"** per portare giù subito tutti i dati.
+   Sync, poi premi **"Scarica dal Cloud"**.
 
-Da quel momento in poi la sincronizzazione prosegue da sola in background su entrambi; i due
-pulsanti restano comunque disponibili per forzarla a mano o verificarla in qualunque momento.
+Da quel momento in poi, ogni volta che vuoi allineare i due dispositivi, ripeti: Carica da dove
+hai appena lavorato, Scarica sull'altro. Nessun automatismo: sei sempre tu a decidere quando.
 
 ## Cosa NON viene sincronizzato
 

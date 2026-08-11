@@ -3,38 +3,10 @@
 // Regola architetturale rigida: nessun altro modulo dell'app deve aprire connessioni,
 // transazioni o object store direttamente. Ogni lettura/scrittura passa da qui.
 // I moduli di dominio (js/domain/*) chiamano queste funzioni generiche.
-//
-// onScrittura/notifica: hook generico "dopo ogni scrittura andata a buon fine", aggiunto per il
-// Sync Cloud (Fase 6, js/sync/syncEngine.js) — è l'UNICO punto dell'app in cui intercettare ogni
-// dbAdd/dbPut/dbDelete di ogni store, senza dover toccare i 25+ moduli di dominio uno per uno.
-// storage.js resta comunque agnostico rispetto al sync: non sa nulla di Supabase, si limita a
-// notificare "è successo qualcosa" a chi si è iscritto. Il terzo parametro opzionale
-// { senzaNotifica: true } permette al motore di sync stesso di scrivere in locale (applicando
-// una modifica remota, o le proprie tabelle tecniche syncOutbox/syncMeta/syncConflitti) senza
-// rientrare nel proprio stesso ciclo di accodamento.
 
 import { DB_NAME, DB_VERSION, STORE_DEFINITIONS } from './db-schema.js';
 
 let dbPromise = null;
-let listeners = [];
-
-// callback(storeName, operazione, dato) — operazione: 'scrivi' | 'elimina'. Per 'scrivi', dato è
-// l'oggetto completo appena salvato; per 'elimina', dato è l'id eliminato. Ritorna una funzione
-// per annullare l'iscrizione.
-export function onScrittura(callback) {
-  listeners.push(callback);
-  return () => { listeners = listeners.filter((l) => l !== callback); };
-}
-
-function notifica(storeName, operazione, dato) {
-  listeners.slice().forEach((callback) => {
-    try {
-      callback(storeName, operazione, dato);
-    } catch (err) {
-      console.error('[storage] un listener onScrittura ha generato un errore:', err);
-    }
-  });
-}
 
 function apriConnessione() {
   if (dbPromise) return dbPromise;
@@ -77,18 +49,14 @@ function richiestaAPromise(request) {
   });
 }
 
-export async function dbAdd(storeName, oggetto, opzioni = {}) {
+export async function dbAdd(storeName, oggetto) {
   const { store } = await transazione(storeName, 'readwrite');
-  const risultato = await richiestaAPromise(store.add(oggetto));
-  if (!opzioni.senzaNotifica) notifica(storeName, 'scrivi', oggetto);
-  return risultato;
+  return richiestaAPromise(store.add(oggetto));
 }
 
-export async function dbPut(storeName, oggetto, opzioni = {}) {
+export async function dbPut(storeName, oggetto) {
   const { store } = await transazione(storeName, 'readwrite');
-  const risultato = await richiestaAPromise(store.put(oggetto));
-  if (!opzioni.senzaNotifica) notifica(storeName, 'scrivi', oggetto);
-  return risultato;
+  return richiestaAPromise(store.put(oggetto));
 }
 
 export async function dbGet(storeName, id) {
@@ -101,11 +69,9 @@ export async function dbGetAll(storeName) {
   return richiestaAPromise(store.getAll());
 }
 
-export async function dbDelete(storeName, id, opzioni = {}) {
+export async function dbDelete(storeName, id) {
   const { store } = await transazione(storeName, 'readwrite');
-  const risultato = await richiestaAPromise(store.delete(id));
-  if (!opzioni.senzaNotifica) notifica(storeName, 'elimina', id);
-  return risultato;
+  return richiestaAPromise(store.delete(id));
 }
 
 export async function dbGetAllByIndex(storeName, indexName, valore) {
