@@ -18,11 +18,20 @@
 // legato al browser, non al Profilo. Se lo stesso account Supabase restasse collegato mentre
 // l'utente cambia Profilo locale, si rischierebbe di mescolare i dati di due Profili diversi
 // nello stesso account cloud. Per questo ogni record sincronizzato porta anche
-// 'profiloLocaleId' (l'id del Profilo locale che lo ha generato, da js/profili.js): push, pull
-// e sottoscrizione realtime sono sempre filtrati anche su questo campo, non solo sull'utente
-// autenticato. Lo stesso account Supabase può quindi sincronizzare più Profili locali in totale
-// sicurezza (restano partizioni separate), ma senza bisogno di sincronizzare anche il registro
-// dei Profili stesso (che resta puramente locale, per-dispositivo).
+// 'profiloLocaleId': push, pull e sottoscrizione realtime sono sempre filtrati anche su questo
+// campo, non solo sull'utente autenticato.
+//
+// CORREZIONE IMPORTANTE (v0.27-004): questo valore è il NOME del Profilo attivo, normalizzato
+// (minuscolo, senza spazi ai lati) — NON l'id del Profilo. L'id (js/profili.js, generaId())
+// viene generato in modo indipendente su ogni dispositivo alla primissima apertura dell'app: due
+// installazioni con lo stesso Profilo "Predefinito" hanno due id locali diversi, quindi
+// filtrare per id impediva strutturalmente la sincronizzazione tra dispositivi diversi (il
+// motivo per cui non si vedevano dati sincronizzati, pur accedendo con lo stesso account). Il
+// nome del Profilo è invece scelto dall'utente ed è quello che, in pratica, viene impostato
+// uguale su ogni dispositivo che deve condividere gli stessi dati. Effetto collaterale da
+// conoscere: se rinomini un Profilo già collegato al Sync, il nuovo nome è una partizione
+// diversa — rinominalo allo stesso modo su tutti i dispositivi, altrimenti perderà il
+// collegamento con i dati già sincronizzati finora.
 //
 // Store esclusi dal Sync (v1): 'allegati' — può contenere il contenuto di un file come stringa
 // base64 direttamente nel record (vedi domain/allegati.js): sincronizzarlo genericamente
@@ -99,6 +108,12 @@ async function aggiornaContatori() {
 
 function chiaveDi(storeName, recordId) {
   return `${storeName}::${recordId}`;
+}
+
+// Vedi nota in cima al file: la partizione cloud è il nome del Profilo normalizzato, non l'id
+// locale (che è diverso su ogni dispositivo per costruzione).
+function normalizzaChiaveProfilo(nome) {
+  return (nome || '').trim().toLowerCase();
 }
 
 // --- Accodamento modifiche locali (outbox) --------------------------------------------------
@@ -335,7 +350,7 @@ export async function avviaMotoreSync() {
   motoreAvviato = true;
 
   const profilo = await ottieniProfiloAttivo();
-  profiloLocaleId = profilo.id;
+  profiloLocaleId = normalizzaChiaveProfilo(profilo.nome);
 
   annullaOnScrittura = onScrittura(alGancioScrittura);
 
@@ -366,6 +381,54 @@ export async function sincronizzaOra() {
   if (!utente) return;
   await pullIniziale();
   await flushOutbox();
+}
+
+// "Carica sul Cloud" (pulsante esplicito nella tab Sync): accoda TUTTI i record attualmente
+// presenti in locale, non solo le modifiche fatte da quando il Sync è attivo. Serve per due
+// casi che altrimenti resterebbero scoperti dalla sola sincronizzazione automatica in
+// background: la primissima volta che colleghi un dispositivo che aveva già dati PRIMA di
+// configurare il Sync (quei record non sono mai passati dall'hook onScrittura, quindi non
+// sarebbero mai stati accodati), oppure per forzare un riallineamento se non ti fidi che la
+// sincronizzazione automatica sia aggiornata. Sicura da rilanciare più volte: passa comunque
+// dalla stessa funzione fp_sync_upsert con rilevamento conflitti, non sovrascrive alla cieca.
+export async function caricaTuttoSulCloud() {
+  if (!SYNC_CONFIGURATO) return;
+  const utente = await utenteCorrente();
+  if (!utente || !profiloLocaleId) throw new Error('Devi essere autenticato per caricare i dati sul Cloud.');
+
+  aggiornaStato({ inCorso: true, ultimoErrore: null });
+  try {
+    for (const storeName of STORE_SINCRONIZZATI) {
+      const record = await dbGetAll(storeName);
+      for (const r of record) {
+        if (!r || !r.id) continue;
+        await dbPut('syncOutbox', {
+          chiave: chiaveDi(storeName, r.id),
+          store: storeName,
+          recordId: r.id,
+          operazione: 'scrivi',
+          payload: r,
+          timestampLocale: new Date().toISOString()
+        }, { senzaNotifica: true });
+      }
+    }
+    await aggiornaContatori();
+    await flushOutbox();
+  } finally {
+    aggiornaStato({ inCorso: false });
+  }
+}
+
+// "Scarica dal Cloud" (pulsante esplicito nella tab Sync): rilegge esplicitamente tutto quello
+// che c'è sul Cloud per questo account e questo Profilo e lo applica in locale — stesso
+// meccanismo del pull automatico all'accesso, richiamabile qui a comando per verificare o
+// forzare un aggiornamento. Non tocca eventuali modifiche locali non ancora inviate (vedi
+// applicaRecordRemoto: restano intatte, il prossimo invio le confronterà comunque col remoto).
+export async function scaricaTuttoDalCloud() {
+  if (!SYNC_CONFIGURATO) return;
+  const utente = await utenteCorrente();
+  if (!utente || !profiloLocaleId) throw new Error('Devi essere autenticato per scaricare i dati dal Cloud.');
+  await pullIniziale();
 }
 
 // Chiamata dopo il logout (vedi viewImpostazioniSync.js): ferma la sottoscrizione realtime. La

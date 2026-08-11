@@ -1,5 +1,45 @@
 # Changelog — Financial Planner
 
+## v0.27-004 — Correzione critica: la sincronizzazione tra dispositivi non funzionava
+
+### Corretto
+- **Bug architetturale**: `profiloLocaleId`, usato per filtrare push/pull/realtime, era l'id
+  locale del Profilo (`js/profili.js`, `generaId()`) — generato in modo indipendente su ogni
+  dispositivo alla primissima apertura dell'app. Due installazioni con lo stesso Profilo
+  "Predefinito" avevano quindi due id diversi: pur accedendo allo stesso account, ogni
+  dispositivo cercava dati sotto un id che l'altro dispositivo non aveva mai usato. Corretto
+  usando il **nome del Profilo** (normalizzato) come chiave di partizione, che l'utente imposta
+  ed è quindi quello che in pratica coincide tra dispositivi collegati agli stessi dati.
+  Contropartita da conoscere: rinominare un Profilo già collegato al Sync richiede rinominarlo
+  allo stesso modo su tutti i dispositivi, altrimenti perde il collegamento con lo storico già
+  sincronizzato.
+- **Dati preesistenti mai inviati al Cloud**: la sincronizzazione automatica in background
+  accoda solo le scritture fatte *dopo* aver configurato il Sync (tramite l'hook `onScrittura` di
+  `storage.js`) — tutto ciò che esisteva già in locale prima di quel momento non veniva mai
+  messo in coda, quindi non sarebbe mai arrivato sul Cloud da solo.
+
+### Aggiunto
+- **Pulsanti espliciti "Carica sul Cloud" e "Scarica dal Cloud"** nella tab Sync, in aggiunta
+  alla sincronizzazione automatica (non la sostituiscono): "Carica" accoda e invia TUTTI i
+  record attualmente in locale per gli store sincronizzati, coprendo il caso dei dati
+  preesistenti; "Scarica" rilegge esplicitamente tutto quello che c'è sul Cloud per l'account e
+  il Profilo correnti e lo applica in locale. Entrambi passano comunque dal rilevamento
+  conflitti server-side (`fp_sync_upsert`): non sovrascrivono alla cieca.
+- La tab Sync mostra ora anche il nome del Profilo collegato, per verificare a colpo d'occhio
+  che coincida tra i dispositivi.
+- Nuova sezione "Collegare più dispositivi allo stesso Profilo" in `SETUP-SUPABASE.md`, con la
+  sequenza consigliata (Carica dal dispositivo con i dati esistenti, poi Scarica sul nuovo).
+
+## v0.27-003 — Script di pulizia per i vecchi oggetti su "public"
+
+### Aggiunto
+- `supabase/cleanup-public.sql`: rimuove `public.sync_records` e `public.fp_sync_upsert`, creati
+  dalla primissima versione dello script (prima dello spostamento su schema dedicato in
+  v0.27-002). Da eseguire una tantum solo da chi aveva già lanciato quella prima versione;
+  `drop table ... cascade` rimuove da sé anche le policy RLS e l'appartenenza alla pubblicazione
+  realtime collegate, senza toccare lo schema `public` in sé. Documentato come passaggio
+  opzionale in `SETUP-SUPABASE.md`.
+
 ## v0.27-002 — Sync Cloud: schema Postgres dedicato "finsteady"
 
 ### Modificato

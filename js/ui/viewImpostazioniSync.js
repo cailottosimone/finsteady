@@ -4,8 +4,9 @@
 
 import { syncDisponibile, accedi, registrati, esci } from '../sync/auth.js';
 import {
-  onCambioStatoSync, sincronizzaOra, elencoConflitti, risolviConflitto
+  onCambioStatoSync, elencoConflitti, risolviConflitto, caricaTuttoSulCloud, scaricaTuttoDalCloud
 } from '../sync/syncEngine.js';
+import { ottieniProfiloAttivo } from '../profili.js';
 import { formattaDataOra } from '../utils/dateUtils.js';
 import { mostraConferma } from '../utils/dialogUtils.js';
 
@@ -35,40 +36,81 @@ export async function renderImpostazioniSync(container) {
   annullaAscolto = onCambioStatoSync((stato) => renderConStato(container, stato));
 }
 
-function renderConStato(container, stato) {
+async function renderConStato(container, stato) {
   if (!stato.autenticato) {
     renderLogin(container);
     return;
   }
 
+  const profiloAttivo = await ottieniProfiloAttivo();
+
   container.innerHTML = `
     <section class="pannello">
       <h3>Sync Cloud</h3>
       <p class="nota">
-        Account collegato: <strong>${stato.email}</strong>.
-        I dati (Conti, Fondi, Obiettivi, Budget, Piano, Movimenti...) si sincronizzano
-        automaticamente in background con questo account, su tutti i dispositivi collegati allo
-        stesso account. Gli Allegati restano solo locali (vedi SETUP-SUPABASE.md).
+        Account collegato: <strong>${stato.email}</strong>. Profilo collegato:
+        <strong>${profiloAttivo.nome}</strong> — perché due dispositivi si sincronizzino tra
+        loro, devono avere lo stesso account <em>e</em> un Profilo attivo con lo stesso nome
+        (non conta l'ordine con cui li hai creati, solo il nome). Gli Allegati restano solo
+        locali (vedi SETUP-SUPABASE.md).
       </p>
       <p>
         ${stato.inCorso
           ? '<span class="badge">Sincronizzazione in corso…</span>'
-          : '<span class="badge badge-ok">✓ Sincronizzato</span>'}
+          : '<span class="badge badge-ok">✓ Aggiornato</span>'}
         ${stato.inCoda > 0 ? `<span class="badge">${stato.inCoda} modifica${stato.inCoda === 1 ? '' : 'he'} in coda</span>` : ''}
         ${stato.conflitti > 0 ? `<span class="badge badge-errore">⚠ ${stato.conflitti} conflitt${stato.conflitti === 1 ? 'o' : 'i'} da risolvere</span>` : ''}
       </p>
       <p class="nota-inline">Ultima sincronizzazione: ${stato.ultimoSync ? formattaDataOra(stato.ultimoSync) : 'mai, da quando hai aperto l\'app'}.</p>
       ${stato.ultimoErrore ? `<p class="badge badge-errore">⚠️ ${stato.ultimoErrore}</p>` : ''}
+      <p class="nota">
+        La sincronizzazione avviene anche da sola in background, ma puoi sempre forzarla a
+        mano con questi due pulsanti — utile soprattutto la prima volta che colleghi un nuovo
+        dispositivo, o per verificare che sia davvero allineato:
+      </p>
       <div class="azioni-riga">
-        <button id="btn-sync-ora">Sincronizza ora</button>
+        <button id="btn-sync-carica">⬆ Carica sul Cloud</button>
+        <button id="btn-sync-scarica">⬇ Scarica dal Cloud</button>
         <button id="btn-sync-esci">Disconnetti</button>
       </div>
       <div id="zona-conflitti-sync"></div>
     </section>
   `;
 
-  container.querySelector('#btn-sync-ora').addEventListener('click', async () => {
-    await sincronizzaOra();
+  container.querySelector('#btn-sync-carica').addEventListener('click', async (e) => {
+    const ok = await mostraConferma({
+      titolo: 'Caricare tutti i dati sul Cloud?',
+      messaggio: `Invia al Cloud tutti i dati di questo dispositivo per il Profilo "${profiloAttivo.nome}" (Conti, Fondi, Obiettivi, Budget, Piano, Movimenti...), non solo le modifiche più recenti. Utile la prima volta che colleghi questo dispositivo. Non sovrascrive alla cieca: eventuali conflitti con dati più recenti già sul Cloud restano da risolvere come sempre, non vengono persi.`,
+      testoConferma: 'Carica tutto'
+    });
+    if (!ok) return;
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    try {
+      await caricaTuttoSulCloud();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  container.querySelector('#btn-sync-scarica').addEventListener('click', async (e) => {
+    const ok = await mostraConferma({
+      titolo: 'Scaricare i dati dal Cloud?',
+      messaggio: `Applica a questo dispositivo tutti i dati presenti sul Cloud per l'account e il Profilo "${profiloAttivo.nome}". Non tocca eventuali modifiche fatte qui e non ancora inviate.`,
+      testoConferma: 'Scarica'
+    });
+    if (!ok) return;
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    try {
+      await scaricaTuttoDalCloud();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      btn.disabled = false;
+    }
   });
 
   container.querySelector('#btn-sync-esci').addEventListener('click', async () => {

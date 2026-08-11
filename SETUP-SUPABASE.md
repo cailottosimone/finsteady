@@ -30,6 +30,12 @@ Questo script è idempotente (puoi rieseguirlo senza problemi se serve).
 menu a tendina separato) e controlla che compaia `sync_records`. In alternativa, nell'SQL
 Editor: `select * from finsteady.sync_records;` non deve dare errore "relation does not exist".
 
+**Se avevi già eseguito una versione precedente dello script** (quella che usava ancora lo
+schema `public`): esegui anche `supabase/cleanup-public.sql` una volta, per rimuovere la vecchia
+tabella `public.sync_records` e la funzione `public.fp_sync_upsert` rimaste lì — altrimenti
+restano come doppioni inutilizzati (l'app da questa versione in poi parla solo con `finsteady`,
+non con `public`). Se il tuo progetto è nuovo, salta questo passaggio: non c'è nulla da pulire.
+
 ## 3. Esponi lo schema "finsteady" alle API (passaggio manuale, obbligatorio)
 
 A differenza dello schema `public`, uno schema creato da zero **non è raggiungibile dal client**
@@ -69,16 +75,37 @@ export const SUPABASE_ANON_KEY = 'eyJ...';
 Salva, ricarica l'app: nella tab **Sync** di Impostazioni comparirà un form per registrarti o
 accedere invece del messaggio "non configurato".
 
+## Collegare più dispositivi allo stesso Profilo
+
+Perché due dispositivi si sincronizzino tra loro serve **sia** lo stesso account (email/password
+usati per accedere) **sia** un Profilo attivo con **esattamente lo stesso nome** (non conta
+l'ordine con cui li hai creati). La tab Sync mostra sempre a quale Profilo sei collegato, per
+verificarlo a colpo d'occhio.
+
+Passaggi consigliati per collegare un secondo dispositivo (es. su un MacBook diverso, o dopo
+aver ripetuto tutta questa procedura da capo):
+
+1. **Sul dispositivo che ha già i tuoi dati** (quello che usavi prima di avere il Sync): completa
+   il setup, poi nella tab Sync premi **"Carica sul Cloud"**. Questo passaggio è necessario anche
+   se il Sync sembra già "attivo": la sincronizzazione automatica in background accoda solo le
+   modifiche fatte *da quando* il Sync è configurato — i dati che avevi già prima non sarebbero
+   altrimenti mai stati inviati al Cloud.
+2. **Sul nuovo dispositivo**: copia lo stesso repository, compila `js/sync/config.js` con lo
+   stesso URL/chiave, assicurati che il Profilo attivo abbia lo stesso nome del primo
+   dispositivo (rinominalo se serve, dalla vista Profili), accedi con lo stesso account nella tab
+   Sync, poi premi **"Scarica dal Cloud"** per portare giù subito tutti i dati.
+
+Da quel momento in poi la sincronizzazione prosegue da sola in background su entrambi; i due
+pulsanti restano comunque disponibili per forzarla a mano o verificarla in qualunque momento.
+
 ## Cosa NON viene sincronizzato
 
 - **Allegati** (ricevute/documenti caricati): restano solo sul dispositivo su cui li hai
   aggiunti. Il resto dei dati (Conti, Fondi, Obiettivi, Budget, Piano, Movimenti...) sincronizza
   normalmente.
-- **Il registro dei Profili** (elenco Profili e quale è attivo): resta per-dispositivo. Se usi
-  più Profili locali, ciascuno sincronizza i propri dati separatamente (anche con lo stesso
-  account Supabase, non si mescolano) — ma su un nuovo dispositivo dovrai comunque ricreare a
-  mano il Profilo con lo stesso nome prima di collegare il Sync, il Profilo in sé non arriva da
-  solo dal cloud.
+- **Il registro dei Profili** (elenco Profili e quale è attivo): resta per-dispositivo. Su un
+  nuovo dispositivo dovrai ricreare a mano il Profilo con lo stesso nome prima di collegare il
+  Sync — il Profilo in sé non arriva da solo dal cloud, solo i dati al suo interno.
 
 ## Sicurezza, in breve
 

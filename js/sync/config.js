@@ -12,5 +12,5 @@
 //
 // Finché questi due valori restano vuoti, il Sync Cloud resta disattivato: l'app funziona
 // esattamente come prima, solo in locale (vedi supabaseClient.js).
-export const SUPABASE_URL = 'https://xnkkacszdmrigudkwcio.supabase.co';
-export const SUPABASE_ANON_KEY = 'sb_publishable_z16j13lRrbWvtAISvx4ssQ_zqNBEckf';
+export const SUPABASE_URL = '';
+export const SUPABASE_ANON_KEY = '';
