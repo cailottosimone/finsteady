@@ -140,6 +140,11 @@ function mostraForm(container) {
       </div>
     </form>
   `;
+  // Il form compare sempre in fondo al pannello, dopo entrambe le colonne di Categorie: con un
+  // elenco lungo (ancora di più ora che le colonne sono a piena larghezza su mobile, vedi CSS)
+  // premere "Modifica" su una voce in alto poteva sembrare non fare nulla, perché il form si
+  // apriva fuori dallo schermo senza che l'utente se ne accorgesse.
+  formContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   container.querySelector('#btn-annulla-categoria').addEventListener('click', () => {
     categoriaInModifica = null;

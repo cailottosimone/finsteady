@@ -946,6 +946,14 @@ button:hover { border-color: var(--colore-testo-debole); background: var(--color
 
   .barra-tab { flex-wrap: wrap; }
 
+  /* Categorie (e qualunque altra vista con lo stesso pattern a due colonne affiancate,
+     .colonne-categorie): su desktop stanno una accanto all'altra, ma senza una regola esplicita
+     ciascuna colonna restava stretta quanto il suo contenuto minimo invece di allargarsi fino al
+     bordo — schede strette e, di conseguenza, altissime perché il testo andava a capo in
+     continuazione (segnalato dall'utente). Ora occupano tutta la larghezza, una sotto l'altra. */
+  .colonne-categorie { gap: var(--spazio-lg); }
+  .colonne-categorie > div { width: 100%; }
+
   /* Target di tocco più comodi (~40-42px, soglia consigliata iOS/Android), senza cambiare le
      dimensioni su desktop. */
   .nav-btn-impostazioni { width: 42px; height: 42px; }
@@ -970,11 +978,12 @@ button:hover { border-color: var(--colore-testo-debole); background: var(--color
   .tabella tr, .tabella-integrita tr {
     display: block;
     position: relative;
-    border: 1px solid var(--colore-bordo);
+    border: 1px solid var(--colore-bordo-forte);
     border-radius: var(--raggio-sm);
     padding: 10px 12px;
     margin-bottom: 8px;
     background: var(--colore-sfondo);
+    box-shadow: var(--ombra);
   }
   /* Una sola riga (icona) come azione — es. il chevron "Dettaglio" di Budget assegnato per
      Conto, o "Rimuovi riga"/"Elimina" in altre tabelle — si sposta in un angolo invece di
@@ -1005,6 +1014,7 @@ button:hover { border-color: var(--colore-testo-debole); background: var(--color
     border-top-left-radius: 0;
     border-top-right-radius: 0;
     padding-top: 2px;
+    box-shadow: none;
   }
   .tabella td, .tabella-integrita td {
     display: block;
@@ -1036,15 +1046,15 @@ button:hover { border-color: var(--colore-testo-debole); background: var(--color
   .tabella td.cella-nome-riga, .tabella-integrita td.cella-nome-riga {
     margin: -10px -12px 8px -12px;
     padding: 9px 12px;
-    background: var(--colore-operativita-soft);
-    border-bottom: 1px solid var(--colore-bordo);
+    background: var(--colore-operativita);
+    border-bottom: none;
     border-radius: var(--raggio-sm) var(--raggio-sm) 0 0;
     font-size: 1.02rem;
     font-weight: 700;
-    color: var(--colore-testo);
+    color: #FFFFFF;
   }
   .tabella td.cella-nome-riga::before, .tabella-integrita td.cella-nome-riga::before {
-    color: var(--colore-operativita);
+    color: rgba(255, 255, 255, 0.78);
   }
 
   /* Il menu "Altre azioni" (Dashboard) era ancorato a destra del suo pulsante (right:0): su
