@@ -970,12 +970,11 @@ button:hover { border-color: var(--colore-testo-debole); background: var(--color
   .tabella tr, .tabella-integrita tr {
     display: block;
     position: relative;
-    border: 1px solid var(--colore-bordo-forte);
-    border-radius: var(--raggio);
-    padding: 12px 14px;
-    margin-bottom: 12px;
+    border: 1px solid var(--colore-bordo);
+    border-radius: var(--raggio-sm);
+    padding: 10px 12px;
+    margin-bottom: 8px;
     background: var(--colore-sfondo);
-    box-shadow: var(--ombra);
   }
   /* Una sola riga (icona) come azione — es. il chevron "Dettaglio" di Budget assegnato per
      Conto, o "Rimuovi riga"/"Elimina" in altre tabelle — si sposta in un angolo invece di
@@ -1001,12 +1000,11 @@ button:hover { border-color: var(--colore-testo-debole); background: var(--color
      Conto) si "aggancia" visivamente alla scheda della riga principale appena sopra, invece di
      comparire come una scheda scollegata a sé stante. */
   .tabella tr:has(> td[colspan]), .tabella-integrita tr:has(> td[colspan]) {
-    margin-top: -13px;
+    margin-top: -9px;
     border-top: none;
     border-top-left-radius: 0;
     border-top-right-radius: 0;
-    padding-top: 4px;
-    box-shadow: none;
+    padding-top: 2px;
   }
   .tabella td, .tabella-integrita td {
     display: block;
@@ -1030,11 +1028,23 @@ button:hover { border-color: var(--colore-testo-debole); background: var(--color
     margin-bottom: 3px;
   }
   /* La prima cella con etichetta di ogni riga (quasi sempre Nome/Conto/Descrizione — assegnata
-     da js/utils/tabelleMobiliUtils.js) più in evidenza: con molte schede in fila, aiuta a
-     distinguere a colpo d'occhio dove finisce l'una e comincia l'altra. */
+     da js/utils/tabelleMobiliUtils.js) come una FASCIA colorata in cima alla scheda, non solo
+     testo in grassetto: uno stacco netto, visibile anche solo scorrendo velocemente la lista,
+     per distinguere a colpo d'occhio dove finisce una scheda e comincia la successiva. La
+     fascia si estende fino ai bordi della scheda (margini negativi pari al padding della riga
+     qui sopra) e ne segue l'arrotondamento in alto. */
   .tabella td.cella-nome-riga, .tabella-integrita td.cella-nome-riga {
+    margin: -10px -12px 8px -12px;
+    padding: 9px 12px;
+    background: var(--colore-operativita-soft);
+    border-bottom: 1px solid var(--colore-bordo);
+    border-radius: var(--raggio-sm) var(--raggio-sm) 0 0;
     font-size: 1.02rem;
     font-weight: 700;
+    color: var(--colore-testo);
+  }
+  .tabella td.cella-nome-riga::before, .tabella-integrita td.cella-nome-riga::before {
+    color: var(--colore-operativita);
   }
 
   /* Il menu "Altre azioni" (Dashboard) era ancorato a destra del suo pulsante (right:0): su
