@@ -1,194 +1,51 @@
 # Changelog — Financial Planner
 
-## v0.28-002 — Ripristinata la sincronizzazione automatica (rimossa per errore in v0.28-001)
-
-La v0.28-001 aveva tolto anche il caricamento/scaricamento automatico insieme alla vecchia
-sincronizzazione per singolo record — non era stato richiesto: l'automatico era stato chiesto
-esplicitamente fin dal primo piano ("Automatico in background") e le app di riferimento
-dell'utente (Vacation Planner, Preventivi 3D) lo hanno entrambe insieme ai pulsanti manuali.
-Corretto qui, mantenendo il modello a istantanea completa (nessun ritorno alla coda/conflitti
-per singolo record della v0.27).
+## v0.27-001 — FinSteady Cloud Sync
 
 ### Aggiunto
-- **Caricamento automatico**: `storage.js` espone di nuovo un hook `onScrittura` (molto più
-  semplice della versione v0.27 — nessuna opzione, nessuna coda), chiamato dopo ogni scrittura
-  riuscita (`dbAdd`/`dbPut`/`dbDelete`). Il motore di Sync vi si iscrive e, a ogni modifica,
-  programma un "Carica sul Cloud" automatico con 4 secondi di attesa (per non spammare la rete a
-  ogni singolo tasto premuto), riazzerando l'attesa se arriva un'altra modifica nel frattempo.
-- **Scaricamento automatico**: una sola volta per sessione, quando l'utente risulta autenticato
-  (login o riapertura app con sessione già valida), il motore di Sync scarica da solo l'ultimo
-  caricamento fatto altrove — così un dispositivo si allinea sempre da sé all'apertura, senza
-  dover premere "Scarica" a mano ogni volta.
-- Durante uno scaricamento (automatico o manuale) il caricamento automatico resta sospeso, per
-  non ricaricare subito sul Cloud dati appena sostituiti da uno scaricamento.
-
-### Corretto
-- **I pulsanti "Carica"/"Scarica"/"Disconnetti" non si disabilitavano più durante un'operazione**:
-  la vecchia disabilitazione era imperativa (`btn.disabled = true` sul pulsante cliccato), ma lo
-  stesso istante in cui l'operazione parte lo stato reattivo si aggiorna e ridisegna l'intera
-  sezione — il pulsante con `.disabled` impostato a mano viene sostituito da uno nuovo, senza
-  quello stato. Corretto rendendo `disabled` parte del template, pilotato direttamente da
-  `stato.inCorso` a ogni ridisegno: ora Carica, Scarica e Disconnetti si disabilitano insieme
-  correttamente, sia per un'azione manuale sia per una automatica.
-- Testo descrittivo della tab Sync aggiornato per riflettere il comportamento automatico
-  (prima diceva ancora, erroneamente, "nessuna sincronizzazione automatica").
-
-## v0.28-001 — Sync Cloud riprogettato: "Carica"/"Scarica" a istantanea completa
-
-Sostituisce il motore a sincronizzazione automatica per singolo record (v0.27-001 → v0.27-004),
-rivelatosi troppo complesso da verificare e da fidarsi. Nuovo modello, uguale nello spirito a
-Vacation Planner e Preventivi 3D dell'utente: due pulsanti, un'azione ciascuno, nessuna
-sincronizzazione silenziosa in background, nessuna scelta da fare dopo aver premuto il
-pulsante.
-
-### Rimosso
-- Sincronizzazione automatica in background (hook `onScrittura` su `storage.js`, coda
-  `syncOutbox`, sottoscrizione realtime, rilevamento conflitti per singolo record e relativo
-  store `syncConflitti`). `storage.js` torna esattamente come prima della Fase 6.
-- Store IndexedDB tecnici `syncOutbox`, `syncMeta`, `syncConflitti`: non più creati su database
-  nuovi (restano, vuoti e inutilizzati, sui database che li avevano già creati — non contengono
-  mai dati dell'utente).
-- Tabella `sync_records` e funzione `fp_sync_upsert` lato Supabase: sostituite da un'unica
-  tabella più semplice (vedi sotto). `supabase/schema.sql` le rimuove da sé se già presenti.
-
-### Aggiunto
-- **"Carica sul Cloud"**: esporta l'intero database del Profilo attivo con la stessa funzione
-  già usata dal Backup locale (`domain/backup.js` → `esportaTutto()`) e lo scrive in un'unica
-  riga Supabase per l'account e il Profilo correnti, sovrascrivendo quella precedente. Nessuna
-  domanda successiva.
-- **"Scarica dal Cloud"**: legge quella riga e la applica in locale con `importaTutto()` (la
-  stessa funzione già usata per importare un Backup locale) — sostituisce interamente i dati
-  del dispositivo. Nessuna domanda successiva.
-- **Indicatore di stato Cloud in Dashboard**: badge cliccabile (apre direttamente la tab Sync)
-  che mostra se il Cloud è collegato e, al passaggio del mouse, l'ultimo caricamento/
-  scaricamento. Assente se il Sync non è nemmeno configurato.
-- Tabella Supabase `finsteady.cloud_snapshot`: chiave primaria composta
-  `(user_id, profilo_locale_id)`, colonna `payload jsonb` con l'intero database esportato, Row
-  Level Security invariata nello spirito (ogni utente vede solo le proprie righe). Niente più
-  funzione PL/pgSQL, niente più pubblicazione realtime: solo tabella e policy.
-
-### Corretto (ereditato da v0.27-004, resta valido)
-- `profilo_locale_id` continua a essere il **nome** del Profilo attivo normalizzato, non il suo
-  id locale — l'id è generato in modo indipendente su ogni dispositivo, quindi diverso anche per
-  lo stesso Profilo su macchine diverse; il nome è invece quello che l'utente tiene
-  deliberatamente uguale tra i dispositivi da collegare.
-
-## v0.27-004 — Correzione critica: la sincronizzazione tra dispositivi non funzionava
-
-### Corretto
-- **Bug architetturale**: `profiloLocaleId`, usato per filtrare push/pull/realtime, era l'id
-  locale del Profilo (`js/profili.js`, `generaId()`) — generato in modo indipendente su ogni
-  dispositivo alla primissima apertura dell'app. Due installazioni con lo stesso Profilo
-  "Predefinito" avevano quindi due id diversi: pur accedendo allo stesso account, ogni
-  dispositivo cercava dati sotto un id che l'altro dispositivo non aveva mai usato. Corretto
-  usando il **nome del Profilo** (normalizzato) come chiave di partizione, che l'utente imposta
-  ed è quindi quello che in pratica coincide tra dispositivi collegati agli stessi dati.
-  Contropartita da conoscere: rinominare un Profilo già collegato al Sync richiede rinominarlo
-  allo stesso modo su tutti i dispositivi, altrimenti perde il collegamento con lo storico già
-  sincronizzato.
-- **Dati preesistenti mai inviati al Cloud**: la sincronizzazione automatica in background
-  accoda solo le scritture fatte *dopo* aver configurato il Sync (tramite l'hook `onScrittura` di
-  `storage.js`) — tutto ciò che esisteva già in locale prima di quel momento non veniva mai
-  messo in coda, quindi non sarebbe mai arrivato sul Cloud da solo.
-
-### Aggiunto
-- **Pulsanti espliciti "Carica sul Cloud" e "Scarica dal Cloud"** nella tab Sync, in aggiunta
-  alla sincronizzazione automatica (non la sostituiscono): "Carica" accoda e invia TUTTI i
-  record attualmente in locale per gli store sincronizzati, coprendo il caso dei dati
-  preesistenti; "Scarica" rilegge esplicitamente tutto quello che c'è sul Cloud per l'account e
-  il Profilo correnti e lo applica in locale. Entrambi passano comunque dal rilevamento
-  conflitti server-side (`fp_sync_upsert`): non sovrascrivono alla cieca.
-- La tab Sync mostra ora anche il nome del Profilo collegato, per verificare a colpo d'occhio
-  che coincida tra i dispositivi.
-- Nuova sezione "Collegare più dispositivi allo stesso Profilo" in `SETUP-SUPABASE.md`, con la
-  sequenza consigliata (Carica dal dispositivo con i dati esistenti, poi Scarica sul nuovo).
-
-## v0.27-003 — Script di pulizia per i vecchi oggetti su "public"
-
-### Aggiunto
-- `supabase/cleanup-public.sql`: rimuove `public.sync_records` e `public.fp_sync_upsert`, creati
-  dalla primissima versione dello script (prima dello spostamento su schema dedicato in
-  v0.27-002). Da eseguire una tantum solo da chi aveva già lanciato quella prima versione;
-  `drop table ... cascade` rimuove da sé anche le policy RLS e l'appartenenza alla pubblicazione
-  realtime collegate, senza toccare lo schema `public` in sé. Documentato come passaggio
-  opzionale in `SETUP-SUPABASE.md`.
-
-## v0.27-002 — Sync Cloud: schema Postgres dedicato "finsteady"
+- **Cloud Sync**, tramite Supabase, con la stessa architettura (login email/password, outbox
+  locale, push/pull automatici in background, risoluzione conflitti last-write-wins su
+  `updatedAt`) già in uso in altre app della suite (es. preventivi3d), adattata al fatto che
+  FinSteady lavora per Profili (database IndexedDB fisicamente separati):
+  - Il collegamento al cloud è **per Profilo**, deciso una volta sola per il Profilo attivo
+    (`Carica questo Profilo sul cloud` la prima volta, oppure `Scarica un Profilo già presente
+    sul cloud`); da quel momento sincronizza da solo in background finché quel Profilo resta
+    attivo. Nessuna azione manuale richiesta a regime.
+  - Nuova tab **Cloud Sync** in Impostazioni: login/registrazione, stato del collegamento del
+    Profilo attivo, elenco dei Profili già presenti sul cloud non ancora scaricati su questo
+    dispositivo (con opzione "Scarica come nuovo Profilo").
+  - Nuova icona dedicata in nav (separata da Profilo/Impostazioni) con lo stato del Cloud Sync
+    (offline / non collegato / da collegare / in sincronizzazione / sincronizzato / errore) e un
+    contatore delle modifiche non ancora inviate.
+  - Nuovi moduli: `js/data/config.js`, `cloud.js`, `auth.js`, `syncProfilo.js` (motore di sync
+    del Profilo attivo, via `storage.js`) e `js/domain/cloudProfili.js` (scarica un Profilo
+    cloud come Profilo locale NUOVO — seconda eccezione documentata, insieme a
+    `backupProfili.js`, alla regola "solo storage.js accede a IndexedDB", per lo stesso motivo:
+    storage.js è agganciato a un solo database per sessione).
+  - Schema Supabase dedicato (`supabase/schema.sql` — schema `finsteady`, RLS per utente): due
+    sole tabelle generiche (`profili_cloud`, `record_sync` con `dati` in JSONB) invece di una
+    tabella tipizzata per store, per non dover far evolvere lo schema SQL ad ogni aggiunta di
+    store/campo in `db-schema.js`.
 
 ### Modificato
-- **`supabase/schema.sql` ora crea uno schema dedicato `finsteady`** (non più il default
-  `public`), coerente con la convenzione già in uso dall'utente per gli altri progetti Supabase.
-  Tabella `sync_records` e funzione `fp_sync_upsert` vivono entrambe lì, con i relativi grant
-  espliciti (`usage`, `select/insert/update/delete`) che uno schema creato da zero non eredita
-  automaticamente come invece succede in `public`.
-- `js/sync/supabaseClient.js`: il client viene creato con `db: { schema: 'finsteady' }`, così
-  `.from()`/`.rpc()` in `syncEngine.js` puntano lì di default senza doverlo ripetere ad ogni
-  chiamata. La sottoscrizione realtime (unica eccezione: l'opzione `schema` del canale non
-  eredita questa configurazione) è stata aggiornata esplicitamente.
-- **Richiede un passaggio manuale non automatizzabile via SQL**: lo schema `finsteady` va
-  esposto in *Project Settings → API → Exposed schemas* nel pannello Supabase, altrimenti le
-  chiamate falliscono con *"The schema must be one of the following: public"* anche a script
-  eseguito correttamente. Aggiunto come nuovo passaggio 3 in `SETUP-SUPABASE.md`, con relativa
-  verifica ("Success. No rows returned" è l'esito atteso e normale per uno script di sole DDL,
-  non un'indicazione di fallimento).
-
-## v0.27-001 — Fase 6: Sync Cloud (Supabase), opzionale
-
-### Aggiunto
-- **Sincronizzazione cloud opzionale** tramite Supabase, per usare lo stesso Profilo su più
-  dispositivi. Disattivata di default: finché `js/sync/config.js` resta vuoto, l'app funziona
-  esattamente come prima, solo in locale. Procedura di attivazione completa in
-  `SETUP-SUPABASE.md` (creazione progetto, script SQL da eseguire una volta, dove trovare le
-  chiavi da incollare in `config.js`).
-- Nuova tab **Sync** in Impostazioni: login/registrazione (email e password via Supabase Auth),
-  stato della sincronizzazione (in coda, in corso, ultimo sync, eventuali errori), pulsante
-  "Sincronizza ora", disconnessione, e un pannello per risolvere eventuali conflitti.
-- Nuovi moduli `js/sync/config.js`, `js/sync/supabaseClient.js`, `js/sync/auth.js`,
-  `js/sync/syncEngine.js`, `js/ui/viewImpostazioniSync.js`.
-- Script `supabase/schema.sql`: tabella `sync_records` con Row Level Security, e funzione
-  `fp_sync_upsert` per l'invio dal client con rilevamento conflitti atomico lato server.
-
-### Scelte architetturali
-- **Una tabella cloud generica invece di 25**: il payload di ogni record IndexedDB viene
-  specchiato così com'è (`jsonb`) in un'unica tabella `sync_records`, sullo stesso principio già
-  usato da `domain/backup.js` in locale (itera `STORE_DEFINITIONS` senza conoscere i campi di
-  ciascuno store). Aggiungere un nuovo store IndexedDB in futuro non richiede alcuna modifica
-  lato Supabase.
-- **Un solo punto di aggancio**: `storage.js` (unico accesso a IndexedDB) espone un hook
-  generico `onScrittura`, usato dal motore di sync per accodare ogni modifica — nessuno dei
-  moduli `js/domain/*` è stato toccato.
-- **Isolamento tra Profili locali**: ogni record sincronizzato porta anche l'id del Profilo
-  locale che lo ha generato (`profiloLocaleId`); push, pull e realtime sono sempre filtrati
-  anche su questo campo, così lo stesso account Supabase può sincronizzare più Profili locali
-  senza mescolarli. Il registro dei Profili in sé resta puramente locale, per-dispositivo.
-- **Conflitti mai risolti automaticamente**: rilevamento atomico lato server
-  (`fp_sync_upsert` confronta il timestamp remoto con l'ultimo noto al client); in caso di
-  conflitto il record resta in un nuovo store locale `syncConflitti` finché l'utente non sceglie
-  esplicitamente quale versione tenere, dalla tab Sync.
-- **Allegati esclusi dal sync (v1)**: possono contenere il contenuto di un file come stringa
-  base64 (`domain/allegati.js`); sincronizzarli genericamente appesantirebbe molto payload di
-  rete e spazio su Supabase. Restano solo locali, dispositivo per dispositivo — possibile
-  evoluzione futura tramite Supabase Storage, non implementata qui.
-- Nuovi store IndexedDB tecnici, `db-schema.js` v8 → v9 (migrazione additiva): `syncOutbox`
-  (coda di modifiche non ancora inviate), `syncMeta` (ultimo timestamp remoto noto per record),
-  `syncConflitti`. Non sono entità del modello del FDD e non vengono mai letti/scritti dai
-  moduli di dominio, solo da `js/sync/syncEngine.js`.
-
-## v0.26-002 — Backup spostato in Impostazioni
-
-### Modificato
-- **Sezione "Backup" spostata dalla Dashboard a una nuova tab in Impostazioni** (nuovo modulo
-  `ui/viewImpostazioniBackup.js`): stesso identico comportamento (esporta/importa la
-  configurazione del Profilo attivo tramite `domain/backup.js`, invariato), solo riposizionato
-  per non ingombrare la vista principale con un pannello tecnico — stesso motivo e stesso
-  pattern già seguito per la Diagnostica (v0.23-001).
-- La sezione "Backup Profili" nella vista Profili (multi-Profilo, `domain/backupProfili.js`)
-  resta dov'era: è un meccanismo distinto, che opera anche su Profili non attivi.
+- **Soft delete centralizzato in `storage.js`**: `dbDelete` non cancella più fisicamente un
+  record ma lo marca con `deletedAt` (tombstone); `dbGet`/`dbGetAll`/`dbGetAllByIndex` lo
+  filtrano automaticamente, quindi il comportamento visto da ogni modulo di dominio resta
+  identico a prima. Necessario per propagare le cancellazioni tra dispositivi via Cloud Sync.
+  `domain/backupProfili.js` (che apre connessioni IndexedDB dirette, bypassando storage.js) è
+  stato aggiornato per filtrare gli stessi tombstone.
+- **Sezione "Backup" spostata dalla Dashboard a Impostazioni**, come tab dedicata separata dalla
+  nuova tab "Cloud Sync" (due meccanismi distinti: uno manuale su file, uno automatico in
+  background). Nessuna logica di export/import cambiata, solo la collocazione (nuovo file
+  `js/ui/viewBackup.js`).
 
 ### Note architetturali
-- Nessuna modifica allo schema IndexedDB né alla logica di export/import: solo spostamento di
-  UI (markup e listener) da `ui/dashboard.js` a `ui/viewImpostazioniBackup.js`, con la relativa
-  tab aggiunta in `ui/viewImpostazioni.js`.
+- Migrazione additiva dello schema IndexedDB (v8 → v9): due nuovi store TECNICI, `_outbox` e
+  `_syncMeta` — stato del solo dispositivo/Profilo locale, mai esportati/importati come dati
+  applicativi, non fanno parte del FDD.
+- Ogni Profilo resta isolato anche sul cloud: ogni riga di `record_sync` porta un
+  `profiloCloudId` e ogni pull filtra sempre per quel valore — nessuna possibilità che dati di
+  un Profilo si mescolino con quelli di un altro, nemmeno sullo stesso account cloud.
 
 ## v0.26-001 — Backup multi-Profilo (export/import di uno o tutti i Profili)
 

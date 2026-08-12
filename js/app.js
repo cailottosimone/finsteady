@@ -9,12 +9,13 @@ import { renderDistribuzione } from './ui/viewDistribuzione.js';
 import { renderRidistribuzione } from './ui/viewRidistribuzione.js';
 import { renderMovimenti } from './ui/viewMovimenti.js';
 import { renderStrategiaReport } from './ui/sezioneStrategiaReport.js';
-import { renderImpostazioni } from './ui/viewImpostazioni.js';
+import { renderImpostazioni, impostaTabAttivaImpostazioni } from './ui/viewImpostazioni.js';
 import { renderProfili } from './ui/viewProfili.js';
 import { inizializzaProfili } from './profili.js';
 import { impostaNomeDatabase } from './db-schema.js';
 import { htmlAvatar } from './utils/avatarUtils.js';
-import { avviaMotoreSync } from './sync/syncEngine.js';
+import { montaSyncIndicator } from './components/syncIndicator.js';
+import { initSyncProfilo } from './data/syncProfilo.js';
 
 // Voci di navigazione principale (in ordine di visualizzazione). Le viste con
 // nascostaDaNav:true non compaiono come bottone in nav, ma restano raggiungibili tramite
@@ -53,6 +54,7 @@ function costruisciNav(profiloAttivo) {
   nav.innerHTML = `
     ${vociVisibili}
     <div class="gruppo-icone-nav">
+      <div id="slot-sync-indicator"></div>
       <button class="nav-btn-impostazioni" data-vista="profili" title="Profilo attivo: ${profiloAttivo.nome}" aria-label="Profili (attivo: ${profiloAttivo.nome})">
         ${htmlAvatar(profiloAttivo.nome, 26)}
       </button>
@@ -64,6 +66,13 @@ function costruisciNav(profiloAttivo) {
 
   nav.querySelectorAll('.nav-btn, .nav-btn-impostazioni').forEach((btn) => {
     btn.addEventListener('click', () => mostraVista(btn.dataset.vista));
+  });
+
+  // Icona dedicata (separata da Profilo/Impostazioni) con lo stato del Cloud Sync: al click
+  // apre Impostazioni direttamente sulla tab "Cloud Sync".
+  montaSyncIndicator(nav.querySelector('#slot-sync-indicator'), () => {
+    impostaTabAttivaImpostazioni('cloud');
+    mostraVista('impostazioni');
   });
 }
 
@@ -90,9 +99,10 @@ async function avvia() {
   costruisciNav(profiloAttivo);
   mostraVista('dashboard');
 
-  // Avviato per ultimo, dopo che il database del Profilo attivo è già impostato: se il Sync
-  // Cloud non è configurato (js/sync/config.js vuoto) non fa nulla, l'app resta invariata.
-  avviaMotoreSync();
+  // Cloud Sync (facoltativo): avviato dopo che il Profilo attivo è noto, così sincronizza
+  // sempre e solo il database giusto. Se l'utente non si è mai collegato al cloud, resta
+  // inattivo (stato "disconnesso") e l'app funziona come sempre, solo in locale.
+  initSyncProfilo();
 }
 
 avvia();

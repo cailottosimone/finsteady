@@ -125,6 +125,7 @@ h1, h2, h3, h4 {
   gap: 6px;
 }
 .nav-btn-impostazioni {
+  position: relative;
   background: transparent;
   color: var(--colore-testo-soft);
   border: none;
@@ -141,8 +142,30 @@ h1, h2, h3, h4 {
   flex-shrink: 0;
   overflow: hidden;
 }
+#nav-btn-cloud-sync { overflow: visible; }
 .nav-btn-impostazioni:hover { color: var(--colore-testo); background: var(--colore-sfondo-soft); }
 .nav-btn-impostazioni.attivo { color: #FFFFFF; background: linear-gradient(135deg, #7B7FF5 0%, #5B5FEF 45%, #4C46E0 100%); }
+
+/* ---------- Icona di stato Cloud Sync (in nav, separata da Profilo/Impostazioni) ---------- */
+.nav-btn-impostazioni.sync-attivo { color: var(--colore-operativita); }
+.nav-btn-impostazioni.sync-ok { color: var(--colore-ok); }
+.nav-btn-impostazioni.sync-attenzione { color: #B8860B; }
+.nav-btn-impostazioni.sync-errore { color: var(--colore-avviso); }
+.sync-badge-conteggio {
+  position: absolute;
+  transform: translate(11px, -13px);
+  background: var(--colore-avviso);
+  color: #FFFFFF;
+  font-size: 0.65rem;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+}
 
 /* ---------- Barra di tab secondaria (sezioni con più viste annidate) ---------- */
 /* Stesso aspetto della nav principale (pillola, gradiente viola quando attiva): l'utente ha

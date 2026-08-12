@@ -12,34 +12,9 @@ import { ottieniAzioniInEvidenza } from '../domain/impostazioniDashboard.js';
 import { elencoBudgetIdsCollegati } from '../domain/piano.js';
 import { verificaIntegritaGlobale, eseguiVerificaIntegritaCompleta } from '../engine/integrityCheck.js';
 import { impostaTabAttivaImpostazioni } from './viewImpostazioni.js';
-import { onCambioStatoSync } from '../sync/syncEngine.js';
 import { formattaValuta } from '../utils/formatCurrency.js';
-import { formattaDataOra } from '../utils/dateUtils.js';
 
 let contoBudgetEspansoId = null;
-let annullaAscoltoSync = null;
-
-// Badge di stato Cloud, cliccabile per aprire direttamente la tab Sync in Impostazioni (stesso
-// pattern già usato per il badge di Diagnostica qui sotto). Nessun badge se il Sync Cloud non è
-// nemmeno configurato (vedi SETUP-SUPABASE.md): niente da mostrare, niente ingombro in più.
-function htmlBadgeSync(stato) {
-  if (!stato.configurato) return '';
-  if (!stato.autenticato) {
-    return '<button id="btn-badge-sync" class="badge" style="cursor:pointer; border:none; font: inherit;">☁ Cloud non collegato</button>';
-  }
-  const dettaglio = `Ultimo caricamento: ${stato.ultimoCaricamento ? formattaDataOra(stato.ultimoCaricamento) : 'mai'}. Ultimo scaricamento: ${stato.ultimoScaricamento ? formattaDataOra(stato.ultimoScaricamento) : 'mai'}.`;
-  return `<button id="btn-badge-sync" class="badge badge-ok" title="${dettaglio}" style="cursor:pointer; border:none; font: inherit;">☁ Cloud collegato (${stato.email})</button>`;
-}
-
-function collegaBadgeSync(container) {
-  const btn = container.querySelector('#btn-badge-sync');
-  if (btn) {
-    btn.addEventListener('click', () => {
-      impostaTabAttivaImpostazioni('sync');
-      window.mostraVista('impostazioni');
-    });
-  }
-}
 
 // Calcolo condiviso dello stato di integrità patrimoniale: usato sia dalla Dashboard (solo per
 // il conteggio nel badge) sia dalla vista Diagnostica in Impostazioni (per il dettaglio
@@ -74,8 +49,6 @@ export const AZIONI = [
 ];
 
 export async function renderDashboard(container) {
-  if (annullaAscoltoSync) { annullaAscoltoSync(); annullaAscoltoSync = null; }
-
   const [conti, fondi, budget, azioniInEvidenza, budgetIdsCollegati, statoIntegrita] = await Promise.all([
     elencoConti(), elencoFondi(), elencoBudget(),
     ottieniAzioniInEvidenza(), elencoBudgetIdsCollegati(),
@@ -100,10 +73,7 @@ export async function renderDashboard(container) {
 
   container.innerHTML = `
     <section class="pannello">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-        <h2 style="margin:0;">Azioni</h2>
-        <span id="zona-badge-sync"></span>
-      </div>
+      <h2>Azioni</h2>
       <div class="azioni-riga-principale">
         ${azioniPrimarie.map((a) => `
           <button id="btn-azione-${a.id}" class="azione-btn azione-primaria">
@@ -207,13 +177,6 @@ export async function renderDashboard(container) {
       `}
     </section>
   `;
-
-  annullaAscoltoSync = onCambioStatoSync((stato) => {
-    const zona = container.querySelector('#zona-badge-sync');
-    if (!zona) return;
-    zona.innerHTML = htmlBadgeSync(stato);
-    collegaBadgeSync(zona);
-  });
 
   AZIONI.forEach((a) => {
     const btn = container.querySelector(`#btn-azione-${a.id}`);
