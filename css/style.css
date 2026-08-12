@@ -991,34 +991,65 @@ button:hover { border-color: var(--colore-testo-debole); background: var(--color
     background: var(--colore-sfondo);
     box-shadow: var(--ombra);
   }
-  /* Una sola riga (icona) come azione — es. il chevron "Dettaglio" di Budget assegnato per
-     Conto, o "Rimuovi riga"/"Elimina" in altre tabelle — si sposta in un angolo invece di
-     occupare un'intera riga della scheda per sé sola: più spazio usato meglio (segnalato
-     dall'utente, screenshot). Solo per pulsanti-icona (.btn-icona, senza testo): un pulsante
-     con testo (es. "Scarica come nuovo Profilo" in Cloud Sync) non ci starebbe in un angolo,
-     resta nel flusso normale. Righe con PIÙ pulsanti azione (es. Fondi:
-     modifica/duplica/archivia/elimina) non sono toccate da questa regola — restano nel flusso
-     normale, hanno bisogno dello spazio di una riga dedicata. */
+  /* Un elemento SOLO (icona azione, badge di stato/lucchetto, o checkbox di selezione) dentro
+     una colonna senza intestazione testuale si sposta in un angolo della scheda invece di
+     occupare un'intera riga per sé solo: più spazio usato meglio (segnalato dall'utente,
+     screenshot). Icona azione singola e badge/lucchetto vanno in alto a DESTRA (mai insieme
+     nella stessa riga: le azioni con un solo pulsante non hanno un badge di stato, e
+     viceversa); la checkbox di selezione va in alto a SINISTRA (Movimenti, Prospetti da
+     confrontare, Obiettivi da dividere/ridistribuire...). Un pulsante CON testo (es. "Scarica
+     come nuovo Profilo" in Cloud Sync) non ci starebbe in un angolo, resta nel flusso normale.
+     Righe con PIÙ pulsanti azione (es. Fondi: modifica/duplica/archivia/elimina) non sono
+     toccate da questa regola — restano nel flusso normale, hanno bisogno dello spazio di una
+     riga dedicata. Una colonna riservata a un badge di stato ma senza badge in quella riga
+     (es. un Piano non bloccato) resta vuota e non occupa spazio. */
   .tabella:not(.tabella-compatta) tr:has(> td[data-label=""] > button.btn-icona:only-child),
-  .tabella-integrita:not(.tabella-compatta) tr:has(> td[data-label=""] > button.btn-icona:only-child) {
+  .tabella-integrita:not(.tabella-compatta) tr:has(> td[data-label=""] > button.btn-icona:only-child),
+  .tabella:not(.tabella-compatta) tr:has(> td[data-label=""] > span.badge:only-child),
+  .tabella-integrita:not(.tabella-compatta) tr:has(> td[data-label=""] > span.badge:only-child) {
     padding-right: 54px;
   }
   .tabella:not(.tabella-compatta) td[data-label=""]:has(> button.btn-icona:only-child),
-  .tabella-integrita:not(.tabella-compatta) td[data-label=""]:has(> button.btn-icona:only-child) {
+  .tabella-integrita:not(.tabella-compatta) td[data-label=""]:has(> button.btn-icona:only-child),
+  .tabella:not(.tabella-compatta) td[data-label=""]:has(> span.badge:only-child),
+  .tabella-integrita:not(.tabella-compatta) td[data-label=""]:has(> span.badge:only-child) {
     position: absolute;
     top: 10px;
     right: 10px;
     border: none;
     padding: 0;
   }
+  .tabella:not(.tabella-compatta) tr:has(> td[data-label=""] > input[type="checkbox"]:only-child),
+  .tabella-integrita:not(.tabella-compatta) tr:has(> td[data-label=""] > input[type="checkbox"]:only-child) {
+    padding-left: 40px;
+  }
+  .tabella:not(.tabella-compatta) td[data-label=""]:has(> input[type="checkbox"]:only-child),
+  .tabella-integrita:not(.tabella-compatta) td[data-label=""]:has(> input[type="checkbox"]:only-child) {
+    position: absolute;
+    top: 13px;
+    left: 12px;
+    border: none;
+    padding: 0;
+  }
+  .tabella:not(.tabella-compatta) td[data-label=""]:empty,
+  .tabella-integrita:not(.tabella-compatta) td[data-label=""]:empty {
+    display: none;
+  }
   /* Se la scheda ha ANCHE la fascia colorata sul nome (sotto), quella deve estendersi fin sotto
-     al pulsante in alto a destra — non fermarsi al bordo della riserva di spazio — altrimenti
-     resta uno spazio bianco scoperto proprio dove sta il pulsante (segnalato dall'utente,
-     screenshot: "il colore non copre anche dove c'è l'icona"). */
+     all'elemento in angolo — non fermarsi al bordo della riserva di spazio — altrimenti resta
+     uno spazio bianco scoperto proprio lì (segnalato dall'utente, screenshot: "il colore non
+     copre anche dove c'è l'icona"). */
   .tabella:not(.tabella-compatta) tr:has(> td[data-label=""] > button.btn-icona:only-child) > td.cella-nome-riga,
-  .tabella-integrita:not(.tabella-compatta) tr:has(> td[data-label=""] > button.btn-icona:only-child) > td.cella-nome-riga {
+  .tabella-integrita:not(.tabella-compatta) tr:has(> td[data-label=""] > button.btn-icona:only-child) > td.cella-nome-riga,
+  .tabella:not(.tabella-compatta) tr:has(> td[data-label=""] > span.badge:only-child) > td.cella-nome-riga,
+  .tabella-integrita:not(.tabella-compatta) tr:has(> td[data-label=""] > span.badge:only-child) > td.cella-nome-riga {
     margin-right: -54px;
     padding-right: 54px;
+  }
+  .tabella:not(.tabella-compatta) tr:has(> td[data-label=""] > input[type="checkbox"]:only-child) > td.cella-nome-riga,
+  .tabella-integrita:not(.tabella-compatta) tr:has(> td[data-label=""] > input[type="checkbox"]:only-child) > td.cella-nome-riga {
+    margin-left: -40px;
+    padding-left: 40px;
   }
   /* Una riga di dettaglio/espansione (<td colspan>, es. Obiettivi di un Fondo, Budget di un
      Conto) si "aggancia" visivamente alla scheda della riga principale appena sopra, invece di

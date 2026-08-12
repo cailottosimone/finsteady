@@ -1,5 +1,23 @@
 # Changelog — FinSteady
 
+## v0.35-001 — Checkbox e tag/lucchetto in angolo, padding uniforme
+
+### Modificato
+- **Checkbox di selezione "fuori contesto" sopra la scheda** (segnalato con screenshot,
+  Prospetti da confrontare): si sposta in alto a SINISTRA della scheda invece di occupare una
+  riga a sé stante sopra la fascia colorata. Stesso trattamento generico già usato per le
+  singole icone-azione (in alto a destra) — vale automaticamente per ogni checkbox di selezione
+  dell'app (Movimenti, Prospetti, Dividi/Ridistribuisci Obiettivi...), nessuna vista toccata a
+  parte l'aggiustamento dei margini della fascia colorata.
+- **Tag "Attivo"/"Inattivo"/"Scollegato" (Budget) e "Bloccato" (Piano, Prospetti) spostati in
+  angolo, in alto a DESTRA della scheda** invece di stare appesi al nome: `js/ui/viewBudget.js`,
+  `viewPiano.js`, `viewProspetti.js` ora li mettono in una colonna propria (intestazione vuota),
+  posizionata dalla stessa regola CSS generica delle icone singole — quando manca (es. un Piano
+  non bloccato) la colonna resta vuota, senza occupare spazio.
+- **Padding dei tag uniformato**: "Inattivo" e "Scollegato" avevano `2px 8px` mentre "Attivo"
+  (`badge-ok`) usava il padding di base (6px 12px) — rimossi gli override inline non necessari
+  in tutto il progetto (Budget, Dashboard, Movimenti), ora tutti i tag hanno lo stesso padding.
+
 ## v0.34-001 — Correzioni di contrasto sulla fascia colorata, Categorie come tabella semplice
 
 ### Modificato

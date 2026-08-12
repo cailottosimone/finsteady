@@ -154,7 +154,7 @@ export async function renderDashboard(container) {
                         <tbody>
                           ${lista.map((b) => `
                             <tr>
-                              <td>${b.nome} ${!budgetIdsCollegati.has(b.id) ? '<span class="badge" style="background:#fff; border:1px dashed var(--colore-bordo-forte); padding:2px 8px;">Scollegato</span>' : (b.stato === 'inattivo' ? '<span class="badge" style="background:#eee;padding:2px 8px;">Inattivo</span>' : '')}</td>
+                              <td>${b.nome} ${!budgetIdsCollegati.has(b.id) ? '<span class="badge" style="background:#fff; border:1px dashed var(--colore-bordo-forte); ">Scollegato</span>' : (b.stato === 'inattivo' ? '<span class="badge" style="background:#eee;">Inattivo</span>' : '')}</td>
                               <td class="numero">${formattaValuta(b.importoAssegnatoDefault)}</td>
                             </tr>
                           `).join('')}

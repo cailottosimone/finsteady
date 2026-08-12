@@ -374,7 +374,7 @@ function rigaAzioniHtml(r) {
 
 function rigaGruppoHtml(r) {
   const espanso = stato.espansi.has(r.idAzione);
-  const badgeStornato = r.stornato ? ' <span class="badge" style="background:#eee;padding:2px 8px;">Stornato</span>' : '';
+  const badgeStornato = r.stornato ? ' <span class="badge" style="background:#eee;">Stornato</span>' : '';
   const rigaPrincipale = `
     <tr class="riga-gruppo-entrata">
       <td></td>
@@ -403,7 +403,7 @@ function rigaGruppoHtml(r) {
       <td><input type="checkbox" class="checkbox-riga" data-id="${f.id}" ${stato.selezionati.has(f.id) ? 'checked' : ''}></td>
       <td></td>
       <td></td>
-      <td style="padding-left:28px;" class="colonna-descrizione">↳ ${f.descrizione || '<i class="fa-solid fa-question-circle"></i>'}${f.stornato ? ' <span class="badge" style="background:#eee;padding:2px 8px;">Stornato</span>' : ''}</td>
+      <td style="padding-left:28px;" class="colonna-descrizione">↳ ${f.descrizione || '<i class="fa-solid fa-question-circle"></i>'}${f.stornato ? ' <span class="badge" style="background:#eee;">Stornato</span>' : ''}</td>
       <td>${f.contoNome || 'Conto eliminato'}</td>
       <td class="numero">${formattaValuta(f.importo)}</td>
       <td>${rigaAzioniHtml(f)}</td>
@@ -418,9 +418,9 @@ function rigaSempliceHtml(r) {
     <tr>
       <td><input type="checkbox" class="checkbox-riga" data-id="${r.id}" ${stato.selezionati.has(r.id) ? 'checked' : ''}></td>
       <td>${formattaDataOra(r.data)}</td>
-      <td>${r.tipo}${r.stornato ? ' <span class="badge" style="background:#eee;padding:2px 8px;">Stornato</span>' : ''}${
-        r.causaleCiclo === 'avanzo' ? ` <span class="badge" style="background:var(--colore-patrimonio-soft);color:var(--colore-patrimonio);padding:2px 8px;">AVANZO</span>`
-        : r.causaleCiclo === 'sforamento' ? ` <span class="badge" style="background:var(--colore-avviso-soft);color:var(--colore-avviso);padding:2px 8px;">SFORAMENTO</span>`
+      <td>${r.tipo}${r.stornato ? ' <span class="badge" style="background:#eee;">Stornato</span>' : ''}${
+        r.causaleCiclo === 'avanzo' ? ` <span class="badge" style="background:var(--colore-patrimonio-soft);color:var(--colore-patrimonio);">AVANZO</span>`
+        : r.causaleCiclo === 'sforamento' ? ` <span class="badge" style="background:var(--colore-avviso-soft);color:var(--colore-avviso);">SFORAMENTO</span>`
         : ''
       }</td>
       <td class="colonna-descrizione">${r.descrizione || '<i class="fa-solid fa-question-circle"></i>'}${(r.allegati && r.allegati.length > 0) ? r.allegati.map((a) => `<button class="btn-icona" title="Vedi allegato${a.nomeFile ? ': ' + a.nomeFile : ''}" data-azione="vedi-allegato" data-id="${a.id}"><i class="fa-solid fa-paperclip"></i></button>`).join('') : ''}</td>

@@ -73,6 +73,7 @@ function renderTabella(container, budgetCompleto, conti, categorie, budgetIdsCol
     : `<table class="tabella">
         <thead><tr>
           ${intestazioneOrdinabile('Nome', 'nome', stato)}
+          <th></th>
           ${intestazioneOrdinabile('Conto', 'contoNome', stato)}
           ${intestazioneOrdinabile('Categoria', 'categoriaNome', stato)}
           ${intestazioneOrdinabile('Importo default', 'importoAssegnatoDefault', stato)}
@@ -83,12 +84,13 @@ function renderTabella(container, budgetCompleto, conti, categorie, budgetIdsCol
             const collegato = budgetIdsCollegati.has(b.id);
             const attivo = !b.stato || b.stato === 'attivo';
             let badge;
-            if (!collegato) badge = '<span class="badge" style="background:#fff; border:1px dashed var(--colore-bordo-forte); padding:2px 8px;">Scollegato</span>';
+            if (!collegato) badge = '<span class="badge" style="background:#fff; border:1px dashed var(--colore-bordo-forte);">Scollegato</span>';
             else if (attivo) badge = '<span class="badge badge-ok">Attivo</span>';
-            else badge = '<span class="badge" style="background:#eee;padding:2px 8px;">Inattivo</span>';
+            else badge = '<span class="badge" style="background:#eee;">Inattivo</span>';
             return `
             <tr>
-              <td>${b.nome} ${badge}</td>
+              <td>${b.nome}</td>
+              <td>${badge}</td>
               <td>${b._contoNome || '-'}</td>
               <td>${b._categoriaNome || '-'}</td>
               <td class="numero">${formattaValuta(b.importoAssegnatoDefault)}</td>
