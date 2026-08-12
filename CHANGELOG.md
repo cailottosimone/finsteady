@@ -1,5 +1,16 @@
 # Changelog — FinSteady
 
+## v0.32-001 — Fascia colorata sul nome di ogni scheda mobile
+
+### Modificato
+- **Dimensioni scheda riportate a prima di v0.31** (bordo, angoli, padding, margine tra schede,
+  ombra): l'aumento non era la cosa giusta, serviva uno stacco di colore, non di dimensione.
+- **La prima cella di ogni riga (Nome/Conto/Descrizione) ora è una fascia colorata** in cima
+  alla scheda (tinta lilla `--colore-operativita-soft`, la stessa usata per Budget/Operatività
+  nel resto dell'app), non solo testo in grassetto: uno stacco netto, riconoscibile anche solo
+  scorrendo la lista velocemente, per capire subito dove finisce una scheda e comincia la
+  successiva.
+
 ## v0.31-001 — Rebranding FinSteady, rifinitura schede mobile
 
 ### Modificato
