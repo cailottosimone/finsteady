@@ -1,24 +1,21 @@
-// Vista Backup (in Impostazioni): esporta/importa l'intera configurazione del Profilo attivo
-// (Conti, Fondi, Obiettivi, Budget, Piano, Movimenti...) in un file JSON, per portarla su un
-// altro PC. Spostato qui dalla Dashboard per non ingombrare la vista principale con un pannello
-// tecnico — stesso motivo e stesso pattern già seguito per la Diagnostica (vedi
-// viewImpostazioniDiagnostica.js).
-//
-// Per il backup di UN Profilo specifico non attivo, o di TUTTI i Profili insieme, resta invece
-// nella vista Profili la sezione "Backup Profili" (domain/backupProfili.js), che è un meccanismo
-// distinto: opera su database di Profili anche non attivi, non solo su quello corrente.
+// Vista Backup — contenuto spostato dalla Dashboard (v0.26 e precedenti) a una tab dedicata in
+// Impostazioni (v0.27), per liberare la Dashboard e avvicinarla alle altre sezioni di
+// configurazione/manutenzione dell'app. Nessuna logica cambiata rispetto a prima: esporta/
+// importa l'intero database del Profilo ATTIVO (per il backup multi-Profilo vedi invece la
+// vista Profili; per il Cloud Sync vedi la tab "Cloud Sync" qui accanto).
 
 import { esportaTutto, importaTutto } from '../domain/backup.js';
 import { mostraConferma } from '../utils/dialogUtils.js';
 
-export async function renderImpostazioniBackup(container) {
+export async function renderBackup(container) {
   container.innerHTML = `
     <section class="pannello">
-      <h3>Backup</h3>
+      <h2>Backup (Profilo attivo)</h2>
       <p class="nota">
-        Esporta l'intera configurazione (Conti, Fondi, Obiettivi, Budget, Piano, Movimenti...)
-        in un file, per portarla su un altro PC. Importare un backup <strong>sostituisce
-        interamente</strong> i dati attuali di questo browser: usalo con cautela.
+        Esporta l'intera configurazione del Profilo attivo (Conti, Fondi, Obiettivi, Budget,
+        Piano, Movimenti...) in un file, per portarla su un altro PC. Importare un backup
+        <strong>sostituisce interamente</strong> i dati attuali di questo browser: usalo con
+        cautela.
       </p>
       <div class="azioni-riga">
         <button id="btn-esporta">Esporta configurazione</button>
@@ -35,7 +32,7 @@ export async function renderImpostazioniBackup(container) {
     const a = document.createElement('a');
     const dataFile = new Date().toISOString().substring(0, 10);
     a.href = url;
-    a.download = `financial-planner-backup-${dataFile}.json`;
+    a.download = `finsteady-backup-${dataFile}.json`;
     a.click();
     URL.revokeObjectURL(url);
   });

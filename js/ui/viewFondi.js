@@ -13,6 +13,7 @@ import { formattaValuta } from '../utils/formatCurrency.js';
 import { formattaData } from '../utils/dateUtils.js';
 import { ordina, filtraTesto, intestazioneOrdinabile, collegaOrdinamento } from '../utils/listaUtils.js';
 import { mostraConferma } from '../utils/dialogUtils.js';
+import { apriModaleVista, chiudiModaleVista } from '../components/modaleVista.js';
 
 let fondoInModifica = null;
 let fondoEspansoId = null;
@@ -39,7 +40,7 @@ export async function renderFondi(container) {
   const fondiArchiviati = fondi.filter((f) => f.stato === 'archiviato');
 
   container.innerHTML = `
-    <section class="pannello" style="border-top: 3px solid var(--colore-patrimonio);">
+    <section class="pannello">
       <h2>Fondi</h2>
       <p class="nota">
         Il Fondo rappresenta patrimonio: cresce nel tempo e appartiene ad un Conto. Ogni Fondo
@@ -357,10 +358,12 @@ function renderObiettivi(fondo, obiettivi) {
 }
 
 function mostraFormFondo(container, conti) {
-  const formContainer = container.querySelector('#form-fondo-container');
   const f = fondoInModifica || {};
 
-  mostraFormFondoAsync(container, conti, formContainer, f);
+  apriModaleVista({
+    titolo: fondoInModifica ? 'Modifica Fondo' : 'Nuovo Fondo',
+    render: (corpo) => mostraFormFondoAsync(container, conti, corpo, f)
+  });
 }
 
 async function mostraFormFondoAsync(container, conti, formContainer, f) {
@@ -370,7 +373,6 @@ async function mostraFormFondoAsync(container, conti, formContainer, f) {
 
   formContainer.innerHTML = `
     <form id="form-fondo" class="form-scheda">
-      <h3>${fondoInModifica ? 'Modifica Fondo' : 'Nuovo Fondo'}</h3>
       <label>Nome *<input name="nome" required value="${f.nome || ''}"></label>
       <label>Descrizione<input name="descrizione" value="${f.descrizione || ''}"></label>
       <label>Conto di appartenenza *
@@ -402,12 +404,12 @@ async function mostraFormFondoAsync(container, conti, formContainer, f) {
     </form>
   `;
 
-  container.querySelector('#btn-annulla-fondo').addEventListener('click', () => {
+  formContainer.querySelector('#btn-annulla-fondo').addEventListener('click', () => {
     fondoInModifica = null;
-    formContainer.innerHTML = '';
+    chiudiModaleVista();
   });
 
-  container.querySelector('#form-fondo').addEventListener('submit', async (e) => {
+  formContainer.querySelector('#form-fondo').addEventListener('submit', async (e) => {
     e.preventDefault();
     const dati = Object.fromEntries(new FormData(e.target).entries());
     dati.inclusoProspettiDefault = e.target.inclusoProspettiDefault.checked;
@@ -421,6 +423,7 @@ async function mostraFormFondoAsync(container, conti, formContainer, f) {
         await creaFondo(dati);
       }
       fondoInModifica = null;
+      chiudiModaleVista();
       renderFondi(container);
     } catch (err) {
       alert(err.message);
@@ -429,13 +432,13 @@ async function mostraFormFondoAsync(container, conti, formContainer, f) {
 }
 
 function mostraFormObiettivo(container, fondoId, categorie) {
-  const formContainer = container.querySelector(`#form-obiettivo-container-${fondoId}`);
-  if (!formContainer) return;
   const o = obiettivoInModifica || {};
 
-  formContainer.innerHTML = `
+  apriModaleVista({
+    titolo: obiettivoInModifica ? 'Modifica Obiettivo' : 'Nuovo Obiettivo',
+    render: (formContainer) => {
+      formContainer.innerHTML = `
     <form class="form-scheda">
-      <h4>${obiettivoInModifica ? 'Modifica Obiettivo' : 'Nuovo Obiettivo'}</h4>
       <label>Nome *<input name="nome" required value="${o.nome || ''}"></label>
       <label>Categoria (opzionale)
         <select name="categoriaId">
@@ -456,27 +459,30 @@ function mostraFormObiettivo(container, fondoId, categorie) {
     </form>
   `;
 
-  formContainer.querySelector('.btn-annulla-obiettivo').addEventListener('click', () => {
-    obiettivoInModifica = null;
-    formContainer.innerHTML = '';
-  });
+      formContainer.querySelector('.btn-annulla-obiettivo').addEventListener('click', () => {
+        obiettivoInModifica = null;
+        chiudiModaleVista();
+      });
 
-  formContainer.querySelector('form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const dati = Object.fromEntries(new FormData(e.target).entries());
-    dati.fondoId = fondoId;
-    dati.categoriaId = dati.categoriaId || null;
-    dati.dataPrevista = new Date(dati.dataPrevista).toISOString();
-    try {
-      if (obiettivoInModifica) {
-        await aggiornaObiettivo(obiettivoInModifica.id, dati);
-      } else {
-        await creaObiettivo(dati);
-      }
-      obiettivoInModifica = null;
-      renderFondi(container);
-    } catch (err) {
-      alert(err.message);
+      formContainer.querySelector('form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const dati = Object.fromEntries(new FormData(e.target).entries());
+        dati.fondoId = fondoId;
+        dati.categoriaId = dati.categoriaId || null;
+        dati.dataPrevista = new Date(dati.dataPrevista).toISOString();
+        try {
+          if (obiettivoInModifica) {
+            await aggiornaObiettivo(obiettivoInModifica.id, dati);
+          } else {
+            await creaObiettivo(dati);
+          }
+          obiettivoInModifica = null;
+          chiudiModaleVista();
+          renderFondi(container);
+        } catch (err) {
+          alert(err.message);
+        }
+      });
     }
   });
 }

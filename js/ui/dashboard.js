@@ -12,38 +12,15 @@ import { ottieniAzioniInEvidenza } from '../domain/impostazioniDashboard.js';
 import { elencoBudgetIdsCollegati } from '../domain/piano.js';
 import { verificaIntegritaGlobale, eseguiVerificaIntegritaCompleta } from '../engine/integrityCheck.js';
 import { impostaTabAttivaImpostazioni } from './viewImpostazioni.js';
-import { onCambioStatoSync } from '../sync/syncEngine.js';
 import { formattaValuta } from '../utils/formatCurrency.js';
-import { formattaDataOra } from '../utils/dateUtils.js';
 
 let contoBudgetEspansoId = null;
-let annullaAscoltoSync = null;
 
-// Badge di stato Cloud, cliccabile per aprire direttamente la tab Sync in Impostazioni (stesso
-// pattern già usato per il badge di Diagnostica qui sotto). Nessun badge se il Sync Cloud non è
-// nemmeno configurato (vedi SETUP-SUPABASE.md): niente da mostrare, niente ingombro in più.
-function htmlBadgeSync(stato) {
-  if (!stato.configurato) return '';
-  if (!stato.autenticato) {
-    return '<button id="btn-badge-sync" class="badge" style="cursor:pointer; border:none; font: inherit;">☁ Cloud non collegato</button>';
-  }
-  const dettaglio = `Ultimo caricamento: ${stato.ultimoCaricamento ? formattaDataOra(stato.ultimoCaricamento) : 'mai'}. Ultimo scaricamento: ${stato.ultimoScaricamento ? formattaDataOra(stato.ultimoScaricamento) : 'mai'}.`;
-  return `<button id="btn-badge-sync" class="badge badge-ok" title="${dettaglio}" style="cursor:pointer; border:none; font: inherit;">☁ Cloud collegato (${stato.email})</button>`;
-}
-
-function collegaBadgeSync(container) {
-  const btn = container.querySelector('#btn-badge-sync');
-  if (btn) {
-    btn.addEventListener('click', () => {
-      impostaTabAttivaImpostazioni('sync');
-      window.mostraVista('impostazioni');
-    });
-  }
-}
-
-// Calcolo condiviso dello stato di integrità patrimoniale: usato sia dalla Dashboard (solo per
-// il conteggio nel badge) sia dalla vista Diagnostica in Impostazioni (per il dettaglio
-// completo) — evita di interrogare due volte IndexedDB e di duplicare la logica di calcolo.
+// Calcolo condiviso dello stato di integrità patrimoniale: usato sia dalla Dashboard (badge +
+// equazione aggregata) sia dalla vista Diagnostica in Impostazioni (dettaglio completo per
+// Conto) — evita di interrogare due volte IndexedDB e di duplicare la logica di calcolo.
+// Firma invariata rispetto alla versione precedente: js/ui/viewImpostazioniDiagnostica.js la
+// importa da qui.
 export async function calcolaStatoIntegrita() {
   const [conti, fondi, obiettivi, budget, allocazioni, righeAllocazione, uscite, trasferimenti, rettifiche, storni, budgetCicli] = await Promise.all([
     elencoConti(), elencoFondi(), elencoObiettivi(), elencoBudget(),
@@ -63,6 +40,9 @@ export async function calcolaStatoIntegrita() {
   return { conti, fondi, verifiche, verificheConMovimento, problemi };
 }
 
+// Elenco delle Azioni (invariato nella sostanza: stessi id/icone/etichette di prima — altre
+// viste vi fanno riferimento, in particolare viewImpostazioniDashboard.js per la
+// personalizzazione "in evidenza" e js/components/menuAzioniRapide.js per il menu globale).
 export const AZIONI = [
   { id: 'entrata', icona: '<i class="fa-solid fa-plus"></i>', label: 'Registra Entrata', primaria: true },
   { id: 'uscita', icona: '<i class="fa-solid fa-minus"></i>', label: 'Registra Uscita' },
@@ -74,8 +54,6 @@ export const AZIONI = [
 ];
 
 export async function renderDashboard(container) {
-  if (annullaAscoltoSync) { annullaAscoltoSync(); annullaAscoltoSync = null; }
-
   const [conti, fondi, budget, azioniInEvidenza, budgetIdsCollegati, statoIntegrita] = await Promise.all([
     elencoConti(), elencoFondi(), elencoBudget(),
     ottieniAzioniInEvidenza(), elencoBudgetIdsCollegati(),
@@ -84,7 +62,20 @@ export async function renderDashboard(container) {
 
   const patrimonioFondi = fondi.reduce((s, f) => s + (Number(f.saldo) || 0), 0);
   const saldoContiTotale = conti.reduce((s, c) => s + (Number(c.saldoReale) || 0), 0);
-  const { problemi } = statoIntegrita;
+  const budgetAssegnatoTotale = budget.filter((b) => !b.stato || b.stato === 'attivo')
+    .reduce((s, b) => s + (Number(b.importoAssegnatoDefault) || 0), 0);
+  const { problemi, verificheConMovimento } = statoIntegrita;
+
+  // Equazione patrimoniale aggregata (Conto = Fondi + Liquidità libera), sull'intero
+  // portafoglio invece che Conto per Conto: il dettaglio per singolo Conto resta in
+  // Impostazioni → Diagnostica (js/ui/viewImpostazioniDiagnostica.js, invariata), qui è la
+  // sintesi d'insieme — stesso calcolo, solo aggregato invece che per riga.
+  const totaleFondiConMovimento = verificheConMovimento.reduce((s, v) => s + v.totaleFondi, 0);
+  const totaleSaldoConMovimento = verificheConMovimento.reduce((s, v) => s + (Number(v.conto.saldoReale) || 0), 0);
+  const baseEquazione = Math.max(totaleSaldoConMovimento, totaleFondiConMovimento, 0.01);
+  const pctFondi = Math.max(0, Math.min(100, (totaleFondiConMovimento / baseEquazione) * 100));
+  const pctLibera = Math.max(0, 100 - pctFondi);
+  const liquiditaLibera = totaleSaldoConMovimento - totaleFondiConMovimento;
 
   // Budget assegnato per Conto: raggruppa le definizioni di Budget per il Conto di appartenenza.
   const budgetPerConto = new Map();
@@ -94,72 +85,62 @@ export async function renderDashboard(container) {
     budgetPerConto.set(b.contoId, lista);
   });
 
-  const azioniPrimarie = AZIONI.filter((a) => a.primaria);
-  const azioniEvidenza = AZIONI.filter((a) => !a.primaria && azioniInEvidenza.includes(a.id));
+  const azioniStriscia = AZIONI.filter((a) => a.primaria || azioniInEvidenza.includes(a.id));
   const azioniAltre = AZIONI.filter((a) => !a.primaria && !azioniInEvidenza.includes(a.id));
 
   container.innerHTML = `
     <section class="pannello">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-        <h2 style="margin:0;">Azioni</h2>
-        <span id="zona-badge-sync"></span>
-      </div>
-      <div class="azioni-riga-principale">
-        ${azioniPrimarie.map((a) => `
-          <button id="btn-azione-${a.id}" class="azione-btn azione-primaria">
-            <span class="azione-icona">${a.icona}</span>${a.label}
-          </button>
-        `).join('')}
-        ${azioniEvidenza.map((a) => `
-          <button id="btn-azione-${a.id}" class="azione-btn azione-neutra">
-            <span class="azione-icona">${a.icona}</span>${a.label}
-          </button>
-        `).join('')}
-        ${azioniAltre.length > 0 ? `
-          <div class="menu-altre-azioni">
-            <button id="btn-altre-azioni" class="azione-btn azione-neutra" aria-haspopup="true" aria-expanded="false">
-              <span class="azione-icona"><i class="fa-solid fa-ellipsis"></i></span>Altre azioni
-            </button>
-            <div id="dropdown-altre-azioni" class="dropdown-azioni" hidden>
-              ${azioniAltre.map((a) => `
-                <button id="btn-azione-${a.id}" class="dropdown-azioni-voce">${a.icona}${a.label}</button>
-              `).join('')}
-            </div>
-          </div>
-        ` : ''}
-      </div>
-    </section>
-
-    <section class="pannello">
       <h2>Patrimonio</h2>
-      <div class="kpi-riga">
+      <span class="kpi-label">Totale Fondi</span>
+      <div style="font-family:var(--font-numeri); font-variant-numeric:tabular-nums; font-size:2.4rem; font-weight:700; line-height:1.1; margin:4px 0 var(--spazio-sm);">
+        ${formattaValuta(patrimonioFondi)}
+      </div>
+      ${verificheConMovimento.length > 0 ? `
+        <div class="equazione-patrimoniale">
+          <div class="equazione-barra">
+            <div class="equazione-segmento fondi" style="width:${pctFondi}%"></div>
+            <div class="equazione-segmento libera" style="width:${pctLibera}%"></div>
+          </div>
+          <div class="equazione-legenda">
+            <span class="equazione-voce"><span class="equazione-pallino fondi"></span>Fondi ${formattaValuta(totaleFondiConMovimento)}</span>
+            <span class="equazione-voce"><span class="equazione-pallino libera"></span>Liquidità non allocata ${formattaValuta(liquiditaLibera)}</span>
+          </div>
+        </div>
+      ` : ''}
+      <div class="kpi-riga" style="margin-top:var(--spazio-sm);">
         <div class="kpi">
           <span class="kpi-label">Saldo Conti (totale)</span>
           <span class="kpi-valore">${formattaValuta(saldoContiTotale)}</span>
         </div>
         <div class="kpi">
-          <span class="kpi-label">Totale Fondi (patrimonio)</span>
-          <span class="kpi-valore">${formattaValuta(patrimonioFondi)}</span>
-        </div>
-        <div class="kpi">
-          <span class="kpi-label">Budget attivi (definizioni)</span>
-          <span class="kpi-valore">${budget.length}</span>
+          <span class="kpi-label">Budget assegnato (attivo)</span>
+          <span class="kpi-valore">${formattaValuta(budgetAssegnatoTotale)}</span>
         </div>
       </div>
+      ${problemi.length === 0
+        ? '<p class="badge badge-ok" style="margin-top:var(--spazio-sm);">✓ Tutto regolare</p>'
+        : `<button id="btn-badge-integrita" class="badge badge-errore" style="cursor:pointer; border:none; font:inherit; margin-top:var(--spazio-sm);">⚠ ${problemi.length} problem${problemi.length === 1 ? 'a rilevato' : 'i rilevati'}</button>`}
     </section>
 
     <section class="pannello">
-      ${problemi.length === 0
-        ? '<p class="badge badge-ok">✓ Tutto regolare</p>'
-        : `<button id="btn-badge-integrita" class="badge badge-errore" style="cursor:pointer; border:none; font: inherit;">⚠ ${problemi.length} problem${problemi.length === 1 ? 'a rilevato' : 'i rilevati'}</button>`}
+      <h2>Azioni rapide</h2>
+      <p class="nota">Sempre raggiungibili anche dal pulsante "+" (sidebar/tabbar), ovunque tu sia nell'app.</p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        ${azioniStriscia.map((a) => `
+          <button type="button" id="btn-azione-${a.id}" class="chip-selezione" style="${a.primaria ? 'background:var(--colore-operativita); border-color:var(--colore-operativita); color:#fff; font-weight:600;' : ''}">
+            ${a.icona}${a.label}
+          </button>
+        `).join('')}
+        ${azioniAltre.length > 0 ? `<button type="button" id="btn-altre-azioni" class="chip-selezione"><i class="fa-solid fa-ellipsis"></i>Altre azioni</button>` : ''}
+      </div>
     </section>
 
-    <section class="pannello" style="border-top: 3px solid var(--colore-operativita);">
+    <section class="pannello" style="border-top: 2px solid var(--colore-bordo-forte);">
       <h2>Budget assegnato per Conto</h2>
       <p class="nota">
-        Somma degli importi "modello" dei Budget **attivi** definiti su ciascun Conto (i Budget
-        disattivati non entrano nei totali, ma restano visibili nel dettaglio) — una vista
-        informativa, separata dal patrimonio: il Budget non entra mai nella Verifica di
+        Somma degli importi "modello" dei Budget <strong>attivi</strong> definiti su ciascun Conto
+        (i Budget disattivati non entrano nei totali, ma restano visibili nel dettaglio) — una
+        vista informativa, separata dal patrimonio: il Budget non entra mai nella Verifica di
         Integrità Patrimoniale qui sopra.
       </p>
       ${budgetPerConto.size === 0 ? '<p class="nota">Nessun Budget definito.</p>' : `
@@ -178,28 +159,23 @@ export async function renderDashboard(container) {
                 </tr>
                 ${espanso ? `
                   <tr>
-                    <td colspan="3" style="background:var(--colore-sfondo-soft);">
-                      <table class="tabella">
-                        <thead><tr><th>Budget</th><th>Importo</th></tr></thead>
-                        <tbody>
-                          ${lista.map((b) => `
-                            <tr>
-                              <td>${b.nome} ${!budgetIdsCollegati.has(b.id) ? '<span class="badge" style="background:#fff; border:1px dashed var(--colore-bordo-forte); padding:2px 8px;">Scollegato</span>' : (b.stato === 'inattivo' ? '<span class="badge" style="background:#eee;padding:2px 8px;">Inattivo</span>' : '')}</td>
-                              <td class="numero">${formattaValuta(b.importoAssegnatoDefault)}</td>
-                            </tr>
-                          `).join('')}
-                        </tbody>
-                      </table>
+                    <td colspan="3">
+                      <div class="elenco-dettaglio-annidato">
+                        ${lista.map((b) => `
+                          <div class="elenco-dettaglio-annidato-riga">
+                            <span>${b.nome} ${!budgetIdsCollegati.has(b.id) ? '<span class="badge">Scollegato</span>' : (b.stato === 'inattivo' ? '<span class="badge">Inattivo</span>' : '')}</span>
+                            <span class="numero">${formattaValuta(b.importoAssegnatoDefault)}</span>
+                          </div>
+                        `).join('')}
+                      </div>
                     </td>
                   </tr>
                 ` : ''}
               `;
             }).join('')}
-            <tr style="font-weight:600; border-top: 2px solid var(--colore-bordo-forte);">
+            <tr class="totale">
               <td>Totale generale</td>
-              <td class="numero">${formattaValuta(
-                budget.filter((b) => !b.stato || b.stato === 'attivo').reduce((s, b) => s + (Number(b.importoAssegnatoDefault) || 0), 0)
-              )}</td>
+              <td class="numero">${formattaValuta(budgetAssegnatoTotale)}</td>
               <td></td>
             </tr>
           </tbody>
@@ -208,41 +184,15 @@ export async function renderDashboard(container) {
     </section>
   `;
 
-  annullaAscoltoSync = onCambioStatoSync((stato) => {
-    const zona = container.querySelector('#zona-badge-sync');
-    if (!zona) return;
-    zona.innerHTML = htmlBadgeSync(stato);
-    collegaBadgeSync(zona);
-  });
-
   AZIONI.forEach((a) => {
     const btn = container.querySelector(`#btn-azione-${a.id}`);
-    if (btn) btn.addEventListener('click', () => window.mostraVista(a.id));
+    if (btn) btn.addEventListener('click', () => window.apriAzione(a.id));
   });
 
   const btnAltreAzioni = container.querySelector('#btn-altre-azioni');
-  const dropdownAltreAzioni = container.querySelector('#dropdown-altre-azioni');
-  if (btnAltreAzioni && dropdownAltreAzioni) {
-    function chiudiDropdownAltreAzioni() {
-      dropdownAltreAzioni.hidden = true;
-      btnAltreAzioni.setAttribute('aria-expanded', 'false');
-      document.removeEventListener('click', chiudiSuClickEsterno);
-    }
-    function chiudiSuClickEsterno(e) {
-      if (!dropdownAltreAzioni.contains(e.target)) chiudiDropdownAltreAzioni();
-    }
-    btnAltreAzioni.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (dropdownAltreAzioni.hidden) {
-        dropdownAltreAzioni.hidden = false;
-        btnAltreAzioni.setAttribute('aria-expanded', 'true');
-        document.addEventListener('click', chiudiSuClickEsterno);
-      } else {
-        chiudiDropdownAltreAzioni();
-      }
-    });
-    dropdownAltreAzioni.querySelectorAll('.dropdown-azioni-voce').forEach((btn) => {
-      btn.addEventListener('click', () => chiudiDropdownAltreAzioni());
+  if (btnAltreAzioni) {
+    btnAltreAzioni.addEventListener('click', () => {
+      import('../components/menuAzioniRapide.js').then(({ apriMenuAzioniRapide }) => apriMenuAzioniRapide());
     });
   }
 

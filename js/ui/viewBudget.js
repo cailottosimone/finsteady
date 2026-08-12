@@ -5,6 +5,7 @@ import { elencoCategorie } from '../domain/categorie.js';
 import { formattaValuta } from '../utils/formatCurrency.js';
 import { ordina, filtraTesto, intestazioneOrdinabile, collegaOrdinamento } from '../utils/listaUtils.js';
 import { mostraConferma } from '../utils/dialogUtils.js';
+import { apriModaleVista, chiudiModaleVista } from '../components/modaleVista.js';
 
 let budgetInModifica = null;
 const stato = { ordineChiave: 'nome', ordineDecrescente: false, ricerca: '' };
@@ -26,7 +27,7 @@ export async function renderBudget(container) {
   });
 
   container.innerHTML = `
-    <section class="pannello" style="border-top: 3px solid var(--colore-operativita);">
+    <section class="pannello">
       <h2>Budget</h2>
       <p class="nota">
         Il Budget rappresenta la disponibilità operativa del ciclo corrente. Non ha un target,
@@ -73,6 +74,7 @@ function renderTabella(container, budgetCompleto, conti, categorie, budgetIdsCol
     : `<table class="tabella">
         <thead><tr>
           ${intestazioneOrdinabile('Nome', 'nome', stato)}
+          <th></th>
           ${intestazioneOrdinabile('Conto', 'contoNome', stato)}
           ${intestazioneOrdinabile('Categoria', 'categoriaNome', stato)}
           ${intestazioneOrdinabile('Importo default', 'importoAssegnatoDefault', stato)}
@@ -83,12 +85,13 @@ function renderTabella(container, budgetCompleto, conti, categorie, budgetIdsCol
             const collegato = budgetIdsCollegati.has(b.id);
             const attivo = !b.stato || b.stato === 'attivo';
             let badge;
-            if (!collegato) badge = '<span class="badge" style="background:#fff; border:1px dashed var(--colore-bordo-forte); padding:2px 8px;">Scollegato</span>';
+            if (!collegato) badge = '<span class="badge" style="background:#fff; border:1px dashed var(--colore-bordo-forte);">Scollegato</span>';
             else if (attivo) badge = '<span class="badge badge-ok">Attivo</span>';
-            else badge = '<span class="badge" style="background:#eee;padding:2px 8px;">Inattivo</span>';
+            else badge = '<span class="badge" style="background:#eee;">Inattivo</span>';
             return `
             <tr>
-              <td>${b.nome} ${badge}</td>
+              <td>${b.nome}</td>
+              <td>${badge}</td>
               <td>${b._contoNome || '-'}</td>
               <td>${b._categoriaNome || '-'}</td>
               <td class="numero">${formattaValuta(b.importoAssegnatoDefault)}</td>
@@ -156,12 +159,12 @@ function renderTabella(container, budgetCompleto, conti, categorie, budgetIdsCol
 }
 
 function mostraForm(container, conti, categorie) {
-  const formContainer = container.querySelector('#form-budget-container');
   const b = budgetInModifica || {};
 
-  formContainer.innerHTML = `
+  apriModaleVista({
+    titolo: budgetInModifica ? 'Modifica Budget' : 'Nuovo Budget',
+    render: (formContainer) => { formContainer.innerHTML = `
     <form id="form-budget" class="form-scheda">
-      <h3>${budgetInModifica ? 'Modifica Budget' : 'Nuovo Budget'}</h3>
       <label>Nome *<input name="nome" required value="${b.nome || ''}"></label>
       <label>Conto di appartenenza *
         <select name="contoId" required>
@@ -191,12 +194,12 @@ function mostraForm(container, conti, categorie) {
     </form>
   `;
 
-  container.querySelector('#btn-annulla-budget').addEventListener('click', () => {
+  formContainer.querySelector('#btn-annulla-budget').addEventListener('click', () => {
     budgetInModifica = null;
-    formContainer.innerHTML = '';
+    chiudiModaleVista();
   });
 
-  container.querySelector('#form-budget').addEventListener('submit', async (e) => {
+  formContainer.querySelector('#form-budget').addEventListener('submit', async (e) => {
     e.preventDefault();
     const dati = Object.fromEntries(new FormData(e.target).entries());
     dati.inclusoProspettiDefault = e.target.inclusoProspettiDefault.checked;
@@ -208,9 +211,11 @@ function mostraForm(container, conti, categorie) {
         await creaBudget(dati);
       }
       budgetInModifica = null;
+      chiudiModaleVista();
       renderBudget(container);
     } catch (err) {
       alert(err.message);
     }
+  }); }
   });
 }

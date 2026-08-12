@@ -78,6 +78,7 @@ async function renderTabella(container, pianiCompleti) {
     <table class="tabella">
       <thead><tr>
         ${intestazioneOrdinabile('Nome', 'nome', stato)}
+        <th></th>
         ${intestazioneOrdinabile('Predefinito', 'attivo', stato)}
         <th></th>
       </tr></thead>
@@ -182,7 +183,8 @@ function renderRigaPiano(p) {
   const espanso = pianoEspansoId === p.id;
   return `
     <tr>
-      <td>${p.nome}${p.bloccato ? ' <span class="badge" style="background:#eee;" title="Bloccato: sblocca per modificarne nome o Voci"><i class="fa-solid fa-lock"></i></span>' : ''}</td>
+      <td>${p.nome}</td>
+      <td>${p.bloccato ? '<span class="badge" style="background:#eee;" title="Bloccato: sblocca per modificarne nome o Voci"><i class="fa-solid fa-lock"></i></span>' : ''}</td>
       <td>${p.attivo ? '<span class="badge badge-ok">Piano attivo</span>' : '—'}</td>
       <td>
         <div class="azioni-riga">
@@ -199,7 +201,7 @@ function renderRigaPiano(p) {
     </tr>
     ${espanso ? `
       <tr>
-        <td colspan="3" style="background:var(--colore-sfondo-soft);">
+        <td colspan="4" style="background:var(--colore-sfondo-soft);">
           <div id="blocco-voci-${p.id}" class="blocco-obiettivi" style="border-top:none; margin-top:0; padding-top:0;"></div>
         </td>
       </tr>

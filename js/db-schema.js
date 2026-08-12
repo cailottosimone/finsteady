@@ -1,4 +1,4 @@
-// Definizione dello schema IndexedDB per Financial Planner.
+// Definizione dello schema IndexedDB per FinSteady.
 //
 // Principio architetturale: questo file è l'UNICO punto in cui viene definita la struttura
 // del database (nomi store, keyPath, indici). Le migrazioni future devono essere ADDITIVE:
@@ -16,6 +16,13 @@
 // qualunque modulo di dominio effettui la prima connessione (storage.js mette in cache la
 // connessione al primo utilizzo: cambiare DB_NAME dopo non avrebbe più effetto in questa stessa
 // sessione, per questo un cambio di Profilo richiede un ricaricamento della pagina).
+// NOTA sulla ridenominazione in FinSteady: questa stringa resta 'financial-planner-db'
+// deliberatamente, anche dopo il rebrand — è la chiave con cui il browser identifica il
+// database IndexedDB di chi ha già dati salvati. Cambiarla creerebbe un database vuoto con un
+// nome diverso, facendo sparire (non cancellare, ma rendere irraggiungibili) tutti i dati
+// esistenti degli utenti già in uso. Stesso discorso per DB_REGISTRO e
+// DB_STORICO_PREESISTENTE in js/profili.js. Il nome visibile dell'app (titolo, intestazione)
+// è ridenominato liberamente: sono le chiavi tecniche di storage a dover restare stabili.
 export let DB_NAME = 'financial-planner-db';
 export function impostaNomeDatabase(nome) {
   DB_NAME = nome;
@@ -36,15 +43,12 @@ export function impostaNomeDatabase(nome) {
 // automaticamente l'eccesso quando un Piano, in Registra Entrata, non copre l'intera
 // entrata — Conto o Fondo designato, invece di lasciarlo sempre come liquidità residua
 // generica). Nessuno store esistente viene toccato o modificato.
-// v8 → v9: aggiunta additiva, poi rimossa (vedi nota sotto), degli store 'syncOutbox',
-// 'syncMeta' e 'syncConflitti' per una prima versione del Sync Cloud a sincronizzazione
-// automatica per singolo record. Sostituita da un modello più semplice ("Carica sul Cloud" /
-// "Scarica dal Cloud" a istantanea completa, js/sync/syncEngine.js) che non ha bisogno di
-// nessuna coda o stato tecnico locale: usa direttamente domain/backup.js. Questi tre store non
-// compaiono più qui sotto, quindi non vengono più creati su database nuovi; su database che li
-// avevano già creati restano semplicemente inutilizzati e vuoti (rimuoverli davvero
-// richiederebbe eliminarli in un upgrade IndexedDB, non necessario: non contengono mai dati
-// dell'utente, solo stato tecnico transitorio).
+// v8 → v9: aggiunta additiva dei due store TECNICI di sincronizzazione cloud, '_outbox' e
+// '_syncMeta' (Cloud Sync). Creati direttamente in storage.js — non compaiono in
+// STORE_DEFINITIONS perché non sono store di dominio: non fanno parte del FDD, non vengono mai
+// esportati/importati come dati applicativi (backup, backupProfili), e sono stato del solo
+// dispositivo/Profilo locale (non hanno equivalente sul cloud). Nessuno store esistente viene
+// toccato o modificato.
 export const DB_VERSION = 9;
 
 // Ogni voce: { nome store, keyPath, indici: [{ nome, campo, opzioni }] }
@@ -245,3 +249,9 @@ export const STORE_DEFINITIONS = [
     indici: []
   }
 ];
+
+// Nomi degli store di dominio "sincronizzabili" verso il cloud — usato da js/data/config.js
+// (Cloud Sync) e da js/domain/backupProfili.js. È semplicemente la lista dei nomi da
+// STORE_DEFINITIONS: se in futuro si aggiunge uno store di dominio qui sopra, diventa
+// automaticamente sincronizzabile ed esportabile, senza toccare altri file.
+export const SYNCABLE_STORES = STORE_DEFINITIONS.map((def) => def.nome);

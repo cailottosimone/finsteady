@@ -1,19 +1,20 @@
 // Vista Impostazioni: raggiunta tramite l'icona a ingranaggio in fondo alla navigazione
-// principale, non tramite una voce di nav ordinaria. Sette sezioni tramite tab (stesso stile
-// già usato altrove, es. Conti > Fondi/Budget): Categorie, Dashboard (quali Azioni mostrare in
+// principale, non tramite una voce di nav ordinaria. Sezioni tramite tab (stesso stile già
+// usato altrove, es. Conti > Fondi/Budget): Categorie, Dashboard (quali Azioni mostrare in
 // evidenza), Salute Finanziaria (Fondo Emergenza, composizione spesa mensile stimata),
 // Registra Entrata (destinazione dell'eccesso quando un Piano non copre l'intera Entrata),
-// Backup (esporta/importa la configurazione del Profilo attivo, spostato qui dalla Dashboard),
-// Sync (Fase 6 — sincronizzazione cloud opzionale via Supabase) e Diagnostica (dettaglio della
-// Verifica di Integrità Patrimoniale, richiamabile dal badge compatto in Dashboard).
+// Diagnostica (dettaglio della Verifica di Integrità Patrimoniale, richiamabile dal badge
+// compatto in Dashboard), Backup (esporta/importa il Profilo attivo — spostata qui dalla
+// Dashboard in v0.27) e Cloud Sync (v0.27, tab separata dal Backup locale: due meccanismi
+// distinti, uno manuale su file, uno automatico in background).
 
 import { renderCategorie } from './viewCategorie.js';
 import { renderImpostazioniDashboard } from './viewImpostazioniDashboard.js';
 import { renderImpostazioniSaluteFinanziaria } from './viewImpostazioniSaluteFinanziaria.js';
 import { renderImpostazioniAllocazione } from './viewImpostazioniAllocazione.js';
-import { renderImpostazioniBackup } from './viewImpostazioniBackup.js';
-import { renderImpostazioniSync } from './viewImpostazioniSync.js';
 import { renderImpostazioniDiagnostica } from './viewImpostazioniDiagnostica.js';
+import { renderBackup } from './viewBackup.js';
+import { renderCloudSync } from './viewCloudSync.js';
 import { renderBarraTab } from '../utils/tabsUtils.js';
 
 let tabAttiva = 'categorie';
@@ -39,9 +40,9 @@ export async function renderImpostazioni(container) {
       { chiave: 'dashboard', etichetta: 'Dashboard' },
       { chiave: 'salute', etichetta: 'Salute Finanziaria' },
       { chiave: 'allocazione', etichetta: 'Registra Entrata' },
+      { chiave: 'diagnostica', etichetta: 'Diagnostica' },
       { chiave: 'backup', etichetta: 'Backup' },
-      { chiave: 'sync', etichetta: 'Sync' },
-      { chiave: 'diagnostica', etichetta: 'Diagnostica' }
+      { chiave: 'cloud', etichetta: 'Cloud Sync' }
     ],
     chiaveAttiva: tabAttiva,
     onCambio: (chiave, pannello) => {
@@ -50,9 +51,9 @@ export async function renderImpostazioni(container) {
       else if (chiave === 'dashboard') renderImpostazioniDashboard(pannello);
       else if (chiave === 'salute') renderImpostazioniSaluteFinanziaria(pannello);
       else if (chiave === 'allocazione') renderImpostazioniAllocazione(pannello);
-      else if (chiave === 'backup') renderImpostazioniBackup(pannello);
-      else if (chiave === 'sync') renderImpostazioniSync(pannello);
-      else renderImpostazioniDiagnostica(pannello);
+      else if (chiave === 'diagnostica') renderImpostazioniDiagnostica(pannello);
+      else if (chiave === 'backup') renderBackup(pannello);
+      else renderCloudSync(pannello);
     }
   });
 }

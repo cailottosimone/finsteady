@@ -43,11 +43,21 @@ function richiestaAPromise(request) {
   });
 }
 
+// Dal v0.27 (Cloud Sync) storage.js usa il soft delete: un record cancellato resta nello store
+// con deletedAt valorizzato (tombstone), per poter propagare la cancellazione tra dispositivi.
+// Questo modulo apre connessioni dirette bypassando storage.js, quindi deve filtrare i
+// tombstone da solo — altrimenti un backup/trasferimento tra Profili "resusciterebbe" record
+// che l'utente aveva cancellato.
+function eVivo(record) {
+  return !record.deletedAt;
+}
+
 async function leggiTuttiGliStore(db) {
   const dati = {};
   for (const def of STORE_DEFINITIONS) {
     const tx = db.transaction(def.nome, 'readonly');
-    dati[def.nome] = await richiestaAPromise(tx.objectStore(def.nome).getAll());
+    const tutti = await richiestaAPromise(tx.objectStore(def.nome).getAll());
+    dati[def.nome] = tutti.filter(eVivo);
   }
   return dati;
 }
@@ -110,7 +120,7 @@ export async function esportaTuttiIProfili() {
 // id né nome noti, da abbinare per l'utente al Profilo attivo o a uno nuovo.
 function estraiProfiliDaPacchetto(pacchetto) {
   if (!pacchetto || typeof pacchetto !== 'object') {
-    throw new Error('Il file selezionato non è un backup valido di Financial Planner.');
+    throw new Error('Il file selezionato non è un backup valido di FinSteady.');
   }
   if (Array.isArray(pacchetto.profili)) {
     if (pacchetto.profili.length === 0) throw new Error('Il file non contiene alcun Profilo da importare.');
@@ -119,7 +129,7 @@ function estraiProfiliDaPacchetto(pacchetto) {
   if (pacchetto.dati) {
     return [{ profiloId: null, nome: null, dati: pacchetto.dati }];
   }
-  throw new Error('Il file selezionato non è un backup valido di Financial Planner.');
+  throw new Error('Il file selezionato non è un backup valido di FinSteady.');
 }
 
 // Analizza un pacchetto di import e lo confronta con i Profili già presenti in locale, così la

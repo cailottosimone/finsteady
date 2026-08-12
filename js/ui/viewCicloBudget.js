@@ -36,7 +36,7 @@ export async function renderCicloBudget(container) {
   container.innerHTML = `
     <button id="btn-torna-budget" class="link-testuale"><i class="fa-solid fa-arrow-left"></i> Torna a Conti / Budget</button>
 
-    <section class="pannello" style="border-top: 3px solid var(--colore-operativita);">
+    <section class="pannello">
       <h2>Impostazioni Ciclo</h2>
       <p class="nota">
         Modalità attuale: <strong>${impostazioni.modalita === 'mese_solare' ? 'Mese solare' : `Custom (dal ${impostazioni.giornoInizioCustom})`}</strong>

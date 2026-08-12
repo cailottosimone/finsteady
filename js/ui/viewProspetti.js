@@ -131,6 +131,7 @@ async function renderTabella(container, prospettiCompleti, mappaPiani) {
       <thead><tr>
         <th></th>
         ${intestazioneOrdinabile('Nome', 'nome', stato)}
+        <th></th>
         <th>Piano</th>
         <th>Parte da</th>
         <th>Orizzonte</th>
@@ -465,7 +466,8 @@ async function renderRigaProspetto(p, mappaPiani, mappaProspetti) {
   return `
     <tr>
       <td><input type="checkbox" class="checkbox-confronto" data-id="${p.id}" ${selezionatiConfronto.has(p.id) ? 'checked' : ''}></td>
-      <td>${p.nome}${p.bloccato ? ' <span class="badge" style="background:#eee;" title="Bloccato: sblocca per modificarlo"><i class="fa-solid fa-lock"></i></span>' : ''}</td>
+      <td>${p.nome}</td>
+      <td>${p.bloccato ? '<span class="badge" style="background:#eee;" title="Bloccato: sblocca per modificarlo"><i class="fa-solid fa-lock"></i></span>' : ''}</td>
       <td>${pianoNome}</td>
       <td class="nota-inline">${parteDa}</td>
       <td>${descrizioneOrizzonte(p)}</td>
@@ -486,7 +488,7 @@ async function renderRigaProspetto(p, mappaPiani, mappaProspetti) {
     </tr>
     ${espanso ? `
       <tr>
-        <td colspan="8" style="background:var(--colore-sfondo-soft);">
+        <td colspan="9" style="background:var(--colore-sfondo-soft);">
           <div id="dettaglio-prospetto-${p.id}"></div>
         </td>
       </tr>
@@ -1885,7 +1887,7 @@ function mostraFormRidistribuisciProspetto(zona, container, prospettoId, fondiAt
     }
     return `
       <div class="riga-obiettivo" style="border-bottom:1px solid var(--colore-bordo);">
-        <div style="display:flex; align-items:center; gap:12px;">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
           <strong style="min-width:160px;">${r.nome}</strong>
           <input type="number" step="any" data-i="${i}" class="input-nuovo-fondo-ridistr" value="${r.nuovo}" style="width:110px;">
           ${obDelFondo.length > 0 ? `<button type="button" data-azione="espandi-fondo-ridistr" data-i="${i}" style="margin-left:auto;">${r.espanso ? 'Chiudi' : 'Obiettivi'}</button>` : ''}

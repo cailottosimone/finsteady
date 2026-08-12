@@ -1,161 +1,268 @@
-# Changelog — Financial Planner
+# Changelog — FinSteady
 
-## v0.28-001 — Sync Cloud riprogettato: "Carica"/"Scarica" a istantanea completa
-
-Sostituisce il motore a sincronizzazione automatica per singolo record (v0.27-001 → v0.27-004),
-rivelatosi troppo complesso da verificare e da fidarsi. Nuovo modello, uguale nello spirito a
-Vacation Planner e Preventivi 3D dell'utente: due pulsanti, un'azione ciascuno, nessuna
-sincronizzazione silenziosa in background, nessuna scelta da fare dopo aver premuto il
-pulsante.
-
-### Rimosso
-- Sincronizzazione automatica in background (hook `onScrittura` su `storage.js`, coda
-  `syncOutbox`, sottoscrizione realtime, rilevamento conflitti per singolo record e relativo
-  store `syncConflitti`). `storage.js` torna esattamente come prima della Fase 6.
-- Store IndexedDB tecnici `syncOutbox`, `syncMeta`, `syncConflitti`: non più creati su database
-  nuovi (restano, vuoti e inutilizzati, sui database che li avevano già creati — non contengono
-  mai dati dell'utente).
-- Tabella `sync_records` e funzione `fp_sync_upsert` lato Supabase: sostituite da un'unica
-  tabella più semplice (vedi sotto). `supabase/schema.sql` le rimuove da sé se già presenti.
-
-### Aggiunto
-- **"Carica sul Cloud"**: esporta l'intero database del Profilo attivo con la stessa funzione
-  già usata dal Backup locale (`domain/backup.js` → `esportaTutto()`) e lo scrive in un'unica
-  riga Supabase per l'account e il Profilo correnti, sovrascrivendo quella precedente. Nessuna
-  domanda successiva.
-- **"Scarica dal Cloud"**: legge quella riga e la applica in locale con `importaTutto()` (la
-  stessa funzione già usata per importare un Backup locale) — sostituisce interamente i dati
-  del dispositivo. Nessuna domanda successiva.
-- **Indicatore di stato Cloud in Dashboard**: badge cliccabile (apre direttamente la tab Sync)
-  che mostra se il Cloud è collegato e, al passaggio del mouse, l'ultimo caricamento/
-  scaricamento. Assente se il Sync non è nemmeno configurato.
-- Tabella Supabase `finsteady.cloud_snapshot`: chiave primaria composta
-  `(user_id, profilo_locale_id)`, colonna `payload jsonb` con l'intero database esportato, Row
-  Level Security invariata nello spirito (ogni utente vede solo le proprie righe). Niente più
-  funzione PL/pgSQL, niente più pubblicazione realtime: solo tabella e policy.
-
-### Corretto (ereditato da v0.27-004, resta valido)
-- `profilo_locale_id` continua a essere il **nome** del Profilo attivo normalizzato, non il suo
-  id locale — l'id è generato in modo indipendente su ogni dispositivo, quindi diverso anche per
-  lo stesso Profilo su macchine diverse; il nome è invece quello che l'utente tiene
-  deliberatamente uguale tra i dispositivi da collegare.
-
-## v0.27-004 — Correzione critica: la sincronizzazione tra dispositivi non funzionava
-
-### Corretto
-- **Bug architetturale**: `profiloLocaleId`, usato per filtrare push/pull/realtime, era l'id
-  locale del Profilo (`js/profili.js`, `generaId()`) — generato in modo indipendente su ogni
-  dispositivo alla primissima apertura dell'app. Due installazioni con lo stesso Profilo
-  "Predefinito" avevano quindi due id diversi: pur accedendo allo stesso account, ogni
-  dispositivo cercava dati sotto un id che l'altro dispositivo non aveva mai usato. Corretto
-  usando il **nome del Profilo** (normalizzato) come chiave di partizione, che l'utente imposta
-  ed è quindi quello che in pratica coincide tra dispositivi collegati agli stessi dati.
-  Contropartita da conoscere: rinominare un Profilo già collegato al Sync richiede rinominarlo
-  allo stesso modo su tutti i dispositivi, altrimenti perde il collegamento con lo storico già
-  sincronizzato.
-- **Dati preesistenti mai inviati al Cloud**: la sincronizzazione automatica in background
-  accoda solo le scritture fatte *dopo* aver configurato il Sync (tramite l'hook `onScrittura` di
-  `storage.js`) — tutto ciò che esisteva già in locale prima di quel momento non veniva mai
-  messo in coda, quindi non sarebbe mai arrivato sul Cloud da solo.
-
-### Aggiunto
-- **Pulsanti espliciti "Carica sul Cloud" e "Scarica dal Cloud"** nella tab Sync, in aggiunta
-  alla sincronizzazione automatica (non la sostituiscono): "Carica" accoda e invia TUTTI i
-  record attualmente in locale per gli store sincronizzati, coprendo il caso dei dati
-  preesistenti; "Scarica" rilegge esplicitamente tutto quello che c'è sul Cloud per l'account e
-  il Profilo correnti e lo applica in locale. Entrambi passano comunque dal rilevamento
-  conflitti server-side (`fp_sync_upsert`): non sovrascrivono alla cieca.
-- La tab Sync mostra ora anche il nome del Profilo collegato, per verificare a colpo d'occhio
-  che coincida tra i dispositivi.
-- Nuova sezione "Collegare più dispositivi allo stesso Profilo" in `SETUP-SUPABASE.md`, con la
-  sequenza consigliata (Carica dal dispositivo con i dati esistenti, poi Scarica sul nuovo).
-
-## v0.27-003 — Script di pulizia per i vecchi oggetti su "public"
-
-### Aggiunto
-- `supabase/cleanup-public.sql`: rimuove `public.sync_records` e `public.fp_sync_upsert`, creati
-  dalla primissima versione dello script (prima dello spostamento su schema dedicato in
-  v0.27-002). Da eseguire una tantum solo da chi aveva già lanciato quella prima versione;
-  `drop table ... cascade` rimuove da sé anche le policy RLS e l'appartenenza alla pubblicazione
-  realtime collegate, senza toccare lo schema `public` in sé. Documentato come passaggio
-  opzionale in `SETUP-SUPABASE.md`.
-
-## v0.27-002 — Sync Cloud: schema Postgres dedicato "finsteady"
+## v0.36-001 — Selettore Prospetti tondo, bug reale di contrasto su hover
 
 ### Modificato
-- **`supabase/schema.sql` ora crea uno schema dedicato `finsteady`** (non più il default
-  `public`), coerente con la convenzione già in uso dall'utente per gli altri progetti Supabase.
-  Tabella `sync_records` e funzione `fp_sync_upsert` vivono entrambe lì, con i relativi grant
-  espliciti (`usage`, `select/insert/update/delete`) che uno schema creato da zero non eredita
-  automaticamente come invece succede in `public`.
-- `js/sync/supabaseClient.js`: il client viene creato con `db: { schema: 'finsteady' }`, così
-  `.from()`/`.rpc()` in `syncEngine.js` puntano lì di default senza doverlo ripetere ad ogni
-  chiamata. La sottoscrizione realtime (unica eccezione: l'opzione `schema` del canale non
-  eredita questa configurazione) è stata aggiornata esplicitamente.
-- **Richiede un passaggio manuale non automatizzabile via SQL**: lo schema `finsteady` va
-  esposto in *Project Settings → API → Exposed schemas* nel pannello Supabase, altrimenti le
-  chiamate falliscono con *"The schema must be one of the following: public"* anche a script
-  eseguito correttamente. Aggiunto come nuovo passaggio 3 in `SETUP-SUPABASE.md`, con relativa
-  verifica ("Success. No rows returned" è l'esito atteso e normale per uno script di sole DDL,
-  non un'indicazione di fallimento).
+- **Selettore dei Prospetti da confrontare, ora tondo**: il checkbox nativo (quadrato, aspetto
+  variabile da browser a browser) è stato ridisegnato come cerchio via CSS, coerente col resto
+  dei componenti circolari dell'app e con l'accento viola usato per indicare una selezione
+  (`.checkbox-confronto` in `css/style.css`).
+- **Trovato il vero bug dietro il testo scuro su sfondo viola nei bottoni di menu/navigazione**
+  (non un "effetto collaterale" generico dell'hover, ma un preciso bug di specificità CSS):
+  - `.tab-btn-attiva` (le tab attive: Manuale/Equa/Proporzionale in Registra Entrata, le 7 tab
+    di Impostazioni, Fondi/Budget dentro Conti...) è una singola classe, con specificità
+    **inferiore** a `.tab-btn:hover` (classe + pseudo-classe) — al passaggio del mouse, o con
+    l'hover che resta "incollato" dopo un tap su mobile (comportamento comune su iOS/Android),
+    il testo scuro della regola hover generica vinceva SEMPRE, anche sulla tab attiva.
+  - `.nav-btn.attivo` e `.nav-btn-impostazioni.attivo` avevano la STESSA specificità delle
+    rispettive regole `:hover` generiche: un pareggio, risolto correttamente dall'ordine delle
+    regole nella maggior parte dei casi, ma non garantito su ogni motore di rendering — reso
+    esplicito per certezza.
+  - In tutti e tre i casi, il colore bianco è ora ridichiarato esplicitamente nella variante
+    `:hover` della classe attiva, senza fare affidamento sulla specificità o sull'ordine delle
+    regole per vincere.
 
-## v0.27-001 — Fase 6: Sync Cloud (Supabase), opzionale
-
-### Aggiunto
-- **Sincronizzazione cloud opzionale** tramite Supabase, per usare lo stesso Profilo su più
-  dispositivi. Disattivata di default: finché `js/sync/config.js` resta vuoto, l'app funziona
-  esattamente come prima, solo in locale. Procedura di attivazione completa in
-  `SETUP-SUPABASE.md` (creazione progetto, script SQL da eseguire una volta, dove trovare le
-  chiavi da incollare in `config.js`).
-- Nuova tab **Sync** in Impostazioni: login/registrazione (email e password via Supabase Auth),
-  stato della sincronizzazione (in coda, in corso, ultimo sync, eventuali errori), pulsante
-  "Sincronizza ora", disconnessione, e un pannello per risolvere eventuali conflitti.
-- Nuovi moduli `js/sync/config.js`, `js/sync/supabaseClient.js`, `js/sync/auth.js`,
-  `js/sync/syncEngine.js`, `js/ui/viewImpostazioniSync.js`.
-- Script `supabase/schema.sql`: tabella `sync_records` con Row Level Security, e funzione
-  `fp_sync_upsert` per l'invio dal client con rilevamento conflitti atomico lato server.
-
-### Scelte architetturali
-- **Una tabella cloud generica invece di 25**: il payload di ogni record IndexedDB viene
-  specchiato così com'è (`jsonb`) in un'unica tabella `sync_records`, sullo stesso principio già
-  usato da `domain/backup.js` in locale (itera `STORE_DEFINITIONS` senza conoscere i campi di
-  ciascuno store). Aggiungere un nuovo store IndexedDB in futuro non richiede alcuna modifica
-  lato Supabase.
-- **Un solo punto di aggancio**: `storage.js` (unico accesso a IndexedDB) espone un hook
-  generico `onScrittura`, usato dal motore di sync per accodare ogni modifica — nessuno dei
-  moduli `js/domain/*` è stato toccato.
-- **Isolamento tra Profili locali**: ogni record sincronizzato porta anche l'id del Profilo
-  locale che lo ha generato (`profiloLocaleId`); push, pull e realtime sono sempre filtrati
-  anche su questo campo, così lo stesso account Supabase può sincronizzare più Profili locali
-  senza mescolarli. Il registro dei Profili in sé resta puramente locale, per-dispositivo.
-- **Conflitti mai risolti automaticamente**: rilevamento atomico lato server
-  (`fp_sync_upsert` confronta il timestamp remoto con l'ultimo noto al client); in caso di
-  conflitto il record resta in un nuovo store locale `syncConflitti` finché l'utente non sceglie
-  esplicitamente quale versione tenere, dalla tab Sync.
-- **Allegati esclusi dal sync (v1)**: possono contenere il contenuto di un file come stringa
-  base64 (`domain/allegati.js`); sincronizzarli genericamente appesantirebbe molto payload di
-  rete e spazio su Supabase. Restano solo locali, dispositivo per dispositivo — possibile
-  evoluzione futura tramite Supabase Storage, non implementata qui.
-- Nuovi store IndexedDB tecnici, `db-schema.js` v8 → v9 (migrazione additiva): `syncOutbox`
-  (coda di modifiche non ancora inviate), `syncMeta` (ultimo timestamp remoto noto per record),
-  `syncConflitti`. Non sono entità del modello del FDD e non vengono mai letti/scritti dai
-  moduli di dominio, solo da `js/sync/syncEngine.js`.
-
-## v0.26-002 — Backup spostato in Impostazioni
+## v0.35-001 — Checkbox e tag/lucchetto in angolo, padding uniforme
 
 ### Modificato
-- **Sezione "Backup" spostata dalla Dashboard a una nuova tab in Impostazioni** (nuovo modulo
-  `ui/viewImpostazioniBackup.js`): stesso identico comportamento (esporta/importa la
-  configurazione del Profilo attivo tramite `domain/backup.js`, invariato), solo riposizionato
-  per non ingombrare la vista principale con un pannello tecnico — stesso motivo e stesso
-  pattern già seguito per la Diagnostica (v0.23-001).
-- La sezione "Backup Profili" nella vista Profili (multi-Profilo, `domain/backupProfili.js`)
-  resta dov'era: è un meccanismo distinto, che opera anche su Profili non attivi.
+- **Checkbox di selezione "fuori contesto" sopra la scheda** (segnalato con screenshot,
+  Prospetti da confrontare): si sposta in alto a SINISTRA della scheda invece di occupare una
+  riga a sé stante sopra la fascia colorata. Stesso trattamento generico già usato per le
+  singole icone-azione (in alto a destra) — vale automaticamente per ogni checkbox di selezione
+  dell'app (Movimenti, Prospetti, Dividi/Ridistribuisci Obiettivi...), nessuna vista toccata a
+  parte l'aggiustamento dei margini della fascia colorata.
+- **Tag "Attivo"/"Inattivo"/"Scollegato" (Budget) e "Bloccato" (Piano, Prospetti) spostati in
+  angolo, in alto a DESTRA della scheda** invece di stare appesi al nome: `js/ui/viewBudget.js`,
+  `viewPiano.js`, `viewProspetti.js` ora li mettono in una colonna propria (intestazione vuota),
+  posizionata dalla stessa regola CSS generica delle icone singole — quando manca (es. un Piano
+  non bloccato) la colonna resta vuota, senza occupare spazio.
+- **Padding dei tag uniformato**: "Inattivo" e "Scollegato" avevano `2px 8px` mentre "Attivo"
+  (`badge-ok`) usava il padding di base (6px 12px) — rimossi gli override inline non necessari
+  in tutto il progetto (Budget, Dashboard, Movimenti), ora tutti i tag hanno lo stesso padding.
+
+## v0.34-001 — Correzioni di contrasto sulla fascia colorata, Categorie come tabella semplice
+
+### Modificato
+- **Etichetta "CONTO"/"NOME"/... illeggibile sulla fascia viola**: il colore bianco previsto
+  per l'etichetta non vinceva sul grigio scuro di default a causa di una regola CSS con
+  specificità più alta (un `:not()` involontariamente "pesava" più del previsto) — bug puramente
+  di specificità CSS, non concettuale. Corretto rendendo la regola dell'etichetta bianca
+  sicuramente vincente.
+- **Il colore non copriva l'area del pulsante (chevron) in alto a destra**, lasciando un
+  angolo bianco scoperto proprio lì (segnalato con screenshot): la fascia calcolava lo spazio da
+  coprire in base al padding normale della scheda, non a quello (maggiorato) riservato per il
+  pulsante singolo in quell'angolo. Ora la fascia si estende fin sotto al pulsante.
+- **Tag/badge dallo sfondo grigio chiaro (Inattivo, Stornato, Archiviato...) invisibili sulla
+  fascia colorata**: non avevano un colore di testo proprio, ereditavano quello del contesto —
+  bianco su sfondo quasi bianco. Ora hanno sempre un colore di testo esplicito.
+- **Categorie (Impostazioni) torna a essere una tabella semplice**, non più schede: sono voci di
+  un elenco a discesa, non serviva il trattamento riservato a tabelle con informazioni più
+  ricche. Nuova classe opzionale `tabella-compatta` (`css/style.css`, `js/ui/viewCategorie.js`):
+  qualunque vista può aggiungerla a una `.tabella` per restare una tabella vera anche su mobile,
+  solo più compatta (padding ridotto, niente etichette ripetute sopra ogni valore).
+
+## v0.33-001 — Terzo giro di rifiniture mobile (schede annidate, colore, Categorie)
+
+### Modificato
+- **La fascia colorata sul nome ora appare solo sul "contenitore" esterno**, non sulle righe
+  annidate all'interno (es. "Budget assegnato per Conto": colore solo su Conto, non più anche
+  su ogni singolo Budget nel dettaglio espanso) — `js/utils/tabelleMobiliUtils.js` riconosce
+  quando una tabella è annidata dentro la cella di dettaglio di un'altra ed evita di applicare
+  la fascia lì.
+- **Colore della fascia più deciso**: da tinta lilla tenue a colore pieno (`--colore-operativita`,
+  lo stesso viola/indaco usato per i pulsanti primari nel resto dell'app — coerente col
+  progetto), testo bianco.
+- **Bordo e ombra della scheda leggermente più marcati**: bordo da `--colore-bordo` a
+  `--colore-bordo-forte`, aggiunta `--ombra` (lo stesso valore di ombra già usato per i pannelli
+  in tutta l'app, non un valore nuovo).
+- **Categorie: colonne a piena larghezza su mobile invece di card strette e altissime.**
+  `.colonne-categorie` (due colonne affiancate su desktop, Categorie Obiettivo/Categorie
+  Budget) non aveva una regola di larghezza esplicita per le colonne: su schermi piccoli
+  restavano strette quanto il loro contenuto minimo, causando testo spezzato in continuazione e
+  schede altissime. Ora occupano tutta la larghezza disponibile, una sotto l'altra.
+- **Pulsante "Modifica" di una Categoria, che sembrava non fare nulla su mobile**: il form di
+  modifica si apre sempre in fondo al pannello, dopo entrambe le colonne — con un elenco lungo
+  (ancora più lungo ora che le colonne sono a piena larghezza) restava fuori dallo schermo senza
+  che l'utente se ne accorgesse. Ora la vista scorre automaticamente fino al form appena si apre.
+
+## v0.32-001 — Fascia colorata sul nome di ogni scheda mobile
+
+### Modificato
+- **Dimensioni scheda riportate a prima di v0.31** (bordo, angoli, padding, margine tra schede,
+  ombra): l'aumento non era la cosa giusta, serviva uno stacco di colore, non di dimensione.
+- **La prima cella di ogni riga (Nome/Conto/Descrizione) ora è una fascia colorata** in cima
+  alla scheda (tinta lilla `--colore-operativita-soft`, la stessa usata per Budget/Operatività
+  nel resto dell'app), non solo testo in grassetto: uno stacco netto, riconoscibile anche solo
+  scorrendo la lista velocemente, per capire subito dove finisce una scheda e comincia la
+  successiva.
+
+## v0.31-001 — Rebranding FinSteady, rifinitura schede mobile
+
+### Modificato
+- **Rinominata l'app in FinSteady** ovunque sia visibile: titolo scheda browser (`<title>`),
+  intestazione/Dashboard (`<h1>`), messaggi di errore import backup, nome dei file di backup
+  scaricati (`finsteady-backup-...json`, `finsteady-profilo-...json`,
+  `finsteady-tutti-i-profili-...json`), commenti di intestazione nei file sorgente,
+  changelog. **Non toccati deliberatamente** (identificatori tecnici di storage — cambiarli
+  farebbe perdere l'accesso ai dati già salvati di chi usa l'app): il nome del database
+  IndexedDB (`financial-planner-db`), il registro dei Profili
+  (`financial-planner-profili-registro`) e il prefisso dei nomi database dei Profili creati
+  (`financial-planner-db-{id}`). Nota lasciata in `js/db-schema.js` a beneficio di sviluppi
+  futuri. Convenzione di versionamento zip invariata (`repository-financial-planner-vX.Y-NNN`,
+  come da prassi consolidata).
+- **Schede mobile più distinte tra loro**: bordo più marcato, ombra, margine tra una scheda e
+  la successiva aumentato (8px → 12px) — con molte righe in fila, prima si confondevano.
+- **Nome/valore identificativo di ogni riga in evidenza**: la prima cella con etichetta di ogni
+  riga (quasi sempre Nome/Conto/Descrizione, individuata automaticamente da
+  `js/utils/tabelleMobiliUtils.js`) ora è in grassetto e leggermente più grande.
+- **Celle con un solo pulsante-icona spostate in un angolo** invece di occupare un'intera riga
+  della scheda per sé sole (es. il chevron "Dettaglio" di "Budget assegnato per Conto",
+  segnalato con screenshot; "Rimuovi riga" in Distribuisci/Registra Entrata; "Elimina" voce di
+  Piano) — più spazio usato meglio. Non si applica a celle con più pulsanti (es. le azioni di
+  Fondi/Movimenti) né a pulsanti con testo (es. "Scarica come nuovo Profilo" in Cloud Sync):
+  quelli restano nel flusso normale, ne hanno bisogno.
+
+## v0.30-001 — Correzioni mobile dopo secondo riscontro utente (tabelle a schede, overflow residui)
+
+### Modificato
+Solo CSS/markup + un nuovo modulo di utilità, nessuna modifica funzionale.
+
+- **Tabelle: da scorrimento orizzontale a schede impilate.** Il riscontro dell'utente ("le
+  tabelle risultano troppo larghe per mobile e difficilmente utilizzabili") ha superato
+  l'approccio di v0.28/v0.29 (tabella scorrevole in orizzontale): ora, sotto i 720px, ogni riga
+  di **qualunque** tabella dell'app diventa una scheda verticale, ogni cella mostra la propria
+  etichetta di colonna sopra il valore. Nessuno scorrimento laterale residuo su nessuna tabella.
+  Implementato con un nuovo modulo, `js/utils/tabelleMobiliUtils.js` — un `MutationObserver`
+  agganciato una sola volta in `app.js` che assegna automaticamente `data-label` ad ogni cella
+  leggendo l'intestazione di colonna corrispondente, per qualunque tabella (`.tabella`/
+  `.tabella-integrita`) presente ora o generata in seguito da qualsiasi vista, presente o
+  futura: **nessuna delle ~35 viste che generano tabelle è stata toccata**. Le righe di
+  dettaglio/espansione (`<td colspan>`, es. Obiettivi di un Fondo) si agganciano visivamente
+  alla scheda della riga principale invece di comparire come schede scollegate a sé stanti.
+- **Dropdown "Altre azioni" (Dashboard) usciva dallo schermo a sinistra** (segnalato con
+  screenshot): era ancorato a destra del pulsante che lo apre con `position:absolute; right:0`,
+  e su schermi stretti la sua larghezza minima (230px) lo faceva sconfinare oltre il bordo
+  sinistro. Ora, sotto i 720px, diventa un pannello a piena larghezza in flusso normale subito
+  sotto il pulsante: nessun rischio di uscire dai bordi indipendentemente dalla posizione del
+  pulsante.
+- **Righe di pulsanti che sforavano lo schermo** (`.form-azioni` — es. "2. Strategia di
+  Allocazione" in Registra Entrata, 4 pulsanti su una riga senza andare a capo): mancava
+  `flex-wrap: wrap` nella regola base. Corretto globalmente (non solo mobile): su desktop,
+  dove lo spazio è sufficiente, non cambia nulla, i pulsanti restavano già su una riga.
+- **"Budget assegnato per Conto" (Dashboard) leggermente fuori dai margini**: stessa causa
+  radice delle tabelle sopra (colonna azione compressa in poco spazio) — risolta dallo stesso
+  fix generale, nessuna modifica specifica necessaria.
+
+## v0.29-001 — Correzioni mobile dopo riscontro utente (nav, tabelle, densità)
+
+### Modificato
+Solo CSS/markup, nessuna modifica funzionale. Continua il lavoro di v0.28, corretto alla luce
+dell'uso reale su telefono.
+
+- **Navigazione → menu ad hamburger** (`index.html`, `js/app.js`, `css/style.css`). La nav a
+  capo introdotta in v0.28 restava comunque sempre fissa in cima, occupando spazio permanente.
+  Ora, sotto i 720px, resta chiusa di default (zero spazio occupato) e si apre solo al tocco
+  dell'icona hamburger nell'intestazione; si richiude da sola ad ogni navigazione
+  (`chiudiMenuMobile()` in `app.js`, chiamata da `mostraVista()` — nessun effetto su desktop,
+  la classe `nav-aperta` non è usata sopra i 720px).
+- **Tabelle: causa reale della "condensazione" e delle righe altissime individuata e corretta.**
+  Il fix v0.28 rendeva la tabella scorrevole in teoria, ma senza `white-space:nowrap` sulle
+  celle il layout automatico delle tabelle preferisce SEMPRE andare a capo pur di stare nella
+  larghezza disponibile, invece di scorrere: risultato, colonne strette con testo spezzato su
+  più righe e i 5-6 pulsanti azione impilati su 2-3 righe — da qui le righe altissime segnalate
+  in Conti → Fondi e la sensazione di tabella "condensata" in Movimenti. Ora le celle non vanno
+  più a capo (eccezione per la colonna Descrizione di Movimenti, testo libero potenzialmente
+  lungo — nuova classe `colonna-descrizione`) e la tabella scorre davvero in orizzontale.
+- **Testo leggermente più piccolo in tutto il sito**: un solo cambio alla dimensione font della
+  radice sotto i 720px (`html { font-size: 93.75% }`, 16px → 15px) — si riscalano
+  proporzionalmente tutte le dimensioni tipografiche rem-based dell'app; gli spazi/margini,
+  definiti in px fissi, non cambiano.
+- **Celle di tabella più compatte in verticale**: padding ridotto da `10px 8px` a `7px 10px`
+  (righe più basse, un filo più di respiro orizzontale per compensare la perdita del testo a
+  capo).
+
+## v0.28-001 — Ottimizzazione responsive per schermi piccoli (mobile)
+
+### Modificato
+Nessuna modifica funzionale: solo CSS (più due correzioni minime a righe flex in
+`viewProspetti.js`/`viewRidistribuzione.js`), racchiuso in un unico blocco `@media (max-width:
+720px)` in fondo a `css/style.css` — la visualizzazione desktop non cambia in alcun modo sopra
+questa soglia.
+
+- **Barra di tab secondaria senza overflow/wrap** (`.barra-tab` — es. le 7 tab di Impostazioni,
+  o Fondi/Budget dentro Conti): su un telefono le pillole restavano tutte su una riga,
+  allargando l'intera pagina e causando scroll orizzontale su tutta l'app. Ora va a capo.
+- **Icone Profilo/Impostazioni/Cloud Sync raggiungibili "alla cieca"**: erano ancorate a destra
+  (`margin-left:auto`) dentro una nav a scroll orizzontale — se le voci di nav non ci stavano,
+  finivano fuori schermo. Ora la nav va a capo invece di scorrere, tutto resta visibile.
+- **Zoom automatico di Safari iOS sui campi di testo**: nessun input/select/textarea garantiva
+  un font-size minimo di 16px (alcuni erano a 0.9-0.95rem, molti senza alcuna regola,
+  ereditando il default del browser ~13px) — sotto quella soglia iOS ingrandisce la pagina ad
+  ogni tap su un campo. Forzato 16px per tutti i campi, solo sotto i 720px.
+- **Tabelle senza scroll orizzontale**: con più colonne (e i campi numerici da 100-110px usati
+  in alcune di esse, es. Distribuisci/Ridistribuisci/Prospetti) allargavano l'intera pagina
+  invece di restare contenute. Ora `.tabella`/`.tabella-integrita` scorrono in orizzontale
+  quando necessario, restando leggibili alla loro larghezza naturale.
+- **Padding orizzontali pensati per desktop**: fino a 36+24px cumulati tra intestazione, nav e
+  pannelli lasciavano pochissima larghezza utile su un telefono da 360-390px. Ridotti sotto i
+  720px.
+- **Bottoni icona sotto la soglia minima di tocco comoda** (~44px, linee guida iOS/Android):
+  `.nav-btn-impostazioni`, `.btn-icona`, `.btn-stella-azione` erano 32-38px. Ingranditi sotto i
+  720px.
+- **Due righe flex con etichetta a larghezza fissa** (`min-width:160px`, Fondo/Obiettivo +
+  campo importo, in Ridistribuisci Liquidità e Prospetti → Ridistribuzione) potevano non
+  entrare in uno schermo stretto insieme al campo numerico accanto: aggiunto `flex-wrap:wrap`
+  (nessun effetto quando c'è spazio sufficiente, quindi anche qui nessun cambiamento visibile
+  su desktop).
+- Piccola clausola di sicurezza sul menu "Altre azioni" (Dashboard) e un po' meno padding nei
+  dialoghi modali, per i telefoni più piccoli (~320-360px).
+
+## v0.27-001 — FinSteady Cloud Sync
+
+### Aggiunto
+- **Cloud Sync**, tramite Supabase, con la stessa architettura (login email/password, outbox
+  locale, push/pull automatici in background, risoluzione conflitti last-write-wins su
+  `updatedAt`) già in uso in altre app della suite (es. preventivi3d), adattata al fatto che
+  FinSteady lavora per Profili (database IndexedDB fisicamente separati):
+  - Il collegamento al cloud è **per Profilo**, deciso una volta sola per il Profilo attivo
+    (`Carica questo Profilo sul cloud` la prima volta, oppure `Scarica un Profilo già presente
+    sul cloud`); da quel momento sincronizza da solo in background finché quel Profilo resta
+    attivo. Nessuna azione manuale richiesta a regime.
+  - Nuova tab **Cloud Sync** in Impostazioni: login/registrazione, stato del collegamento del
+    Profilo attivo, elenco dei Profili già presenti sul cloud non ancora scaricati su questo
+    dispositivo (con opzione "Scarica come nuovo Profilo").
+  - Nuova icona dedicata in nav (separata da Profilo/Impostazioni) con lo stato del Cloud Sync
+    (offline / non collegato / da collegare / in sincronizzazione / sincronizzato / errore) e un
+    contatore delle modifiche non ancora inviate.
+  - Nuovi moduli: `js/data/config.js`, `cloud.js`, `auth.js`, `syncProfilo.js` (motore di sync
+    del Profilo attivo, via `storage.js`) e `js/domain/cloudProfili.js` (scarica un Profilo
+    cloud come Profilo locale NUOVO — seconda eccezione documentata, insieme a
+    `backupProfili.js`, alla regola "solo storage.js accede a IndexedDB", per lo stesso motivo:
+    storage.js è agganciato a un solo database per sessione).
+  - Schema Supabase dedicato (`supabase/schema.sql` — schema `finsteady`, RLS per utente): due
+    sole tabelle generiche (`profili_cloud`, `record_sync` con `dati` in JSONB) invece di una
+    tabella tipizzata per store, per non dover far evolvere lo schema SQL ad ogni aggiunta di
+    store/campo in `db-schema.js`.
+
+### Modificato
+- **Soft delete centralizzato in `storage.js`**: `dbDelete` non cancella più fisicamente un
+  record ma lo marca con `deletedAt` (tombstone); `dbGet`/`dbGetAll`/`dbGetAllByIndex` lo
+  filtrano automaticamente, quindi il comportamento visto da ogni modulo di dominio resta
+  identico a prima. Necessario per propagare le cancellazioni tra dispositivi via Cloud Sync.
+  `domain/backupProfili.js` (che apre connessioni IndexedDB dirette, bypassando storage.js) è
+  stato aggiornato per filtrare gli stessi tombstone.
+- **Sezione "Backup" spostata dalla Dashboard a Impostazioni**, come tab dedicata separata dalla
+  nuova tab "Cloud Sync" (due meccanismi distinti: uno manuale su file, uno automatico in
+  background). Nessuna logica di export/import cambiata, solo la collocazione (nuovo file
+  `js/ui/viewBackup.js`).
 
 ### Note architetturali
-- Nessuna modifica allo schema IndexedDB né alla logica di export/import: solo spostamento di
-  UI (markup e listener) da `ui/dashboard.js` a `ui/viewImpostazioniBackup.js`, con la relativa
-  tab aggiunta in `ui/viewImpostazioni.js`.
+- Migrazione additiva dello schema IndexedDB (v8 → v9): due nuovi store TECNICI, `_outbox` e
+  `_syncMeta` — stato del solo dispositivo/Profilo locale, mai esportati/importati come dati
+  applicativi, non fanno parte del FDD.
+- Ogni Profilo resta isolato anche sul cloud: ogni riga di `record_sync` porta un
+  `profiloCloudId` e ogni pull filtra sempre per quel valore — nessuna possibilità che dati di
+  un Profilo si mescolino con quelli di un altro, nemmeno sullo stesso account cloud.
 
 ## v0.26-001 — Backup multi-Profilo (export/import di uno o tutti i Profili)
 

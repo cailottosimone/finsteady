@@ -247,7 +247,7 @@ async function renderRigaFondo(container, r, conto) {
 
   return `
     <div class="riga-obiettivo" style="border-bottom:1px solid var(--colore-bordo);">
-      <div style="display:flex; align-items:center; gap:12px;">
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
         <strong style="min-width:160px;">${r.nome}</strong>
         <span class="nota-inline">attuale ${formattaValuta(r.vecchio)}</span>
         <input type="number" step="any" data-fondo-id="${r.fondoId}" class="input-nuovo-fondo" value="${r.nuovo}" style="width:100px;">

@@ -1,75 +1,93 @@
--- Financial Planner — Sync Cloud (Fase 6, versione semplificata "Carica"/"Scarica")
+-- ============================================================================
+-- FinSteady — schema cloud per il Cloud Sync multi-Profilo/multi-dispositivo
+-- ============================================================================
+-- Da eseguire UNA VOLTA nell'SQL Editor del progetto Supabase (Dashboard →
+-- SQL Editor → New query → incolla tutto → Run). Idempotente: si può rieseguire
+-- senza effetti collaterali distruttivi.
 --
--- Da eseguire nel SQL Editor del progetto Supabase (progetto → SQL Editor → New query →
--- incolla tutto → Run), E POI un passaggio manuale nel pannello (vedi in fondo a questo file e
--- SETUP-SUPABASE.md): questo script da solo non basta, Postgres e PostgREST richiedono anche
--- che lo schema venga "esposto" dall'interfaccia del progetto. Idempotente: puoi rieseguirlo
--- senza problemi, anche se avevi già lanciato una versione precedente di questo file — le prime
--- due righe puliscono da sole quanto creato dalle versioni precedenti (con sincronizzazione
--- automatica per singolo record: rivelatasi inutilmente complessa, sostituita da un modello
--- molto più semplice qui sotto).
+-- Dopo aver eseguito questo script, un solo passaggio manuale nel pannello:
+-- Project Settings → Data API → "Exposed schemas" → aggiungi "finsteady"
+-- (per default Supabase espone via API solo lo schema "public"). Senza questo
+-- passaggio le chiamate del client falliscono con "schema not found".
 --
--- Schema dedicato "finsteady" (non il default "public"), come per gli altri progetti Supabase
--- dell'utente: tutto il Sync Cloud vive isolato in questo schema.
---
--- Modello: UNA riga per (account, Profilo) con l'intero database esportato come jsonb — stesso
--- identico formato del Backup locale (domain/backup.js → esportaTutto()/importaTutto()).
--- "Carica sul Cloud" sovrascrive questa riga con lo stato attuale del dispositivo. "Scarica dal
--- Cloud" legge questa riga e sostituisce interamente i dati locali. Nessuna sincronizzazione
--- automatica, nessun confronto per singolo record, nessuna funzione PL/pgSQL: solo una tabella
--- con Row Level Security.
---
--- profilo_locale_id: l'app supporta più Profili locali completamente separati (ciascuno con un
--- proprio database IndexedDB fisico). È il NOME del Profilo attivo (normalizzato), non il suo
--- id — l'id è generato in modo indipendente su ogni dispositivo, quindi diverso anche per lo
--- "stesso" Profilo su macchine diverse; il nome invece è quello che l'utente tiene
--- deliberatamente uguale sui dispositivi che devono condividere gli stessi dati.
+-- Design diverso da altre app della stessa suite (es. preventivi3d): qui NON c'è una tabella
+-- per store IndexedDB con colonne tipizzate. FinSteady ha ~25 store di dominio e uno schema che
+-- evolve spesso (vedi CHANGELOG): una tabella per store richiederebbe una migrazione SQL
+-- parallela ad ogni cambiamento di db-schema.js. Si usano invece DUE tabelle generiche:
+--   - profili_cloud: un registro leggero, una riga per Profilo collegato al cloud;
+--   - record_sync: tutti i record di dominio di tutti gli store, come JSONB, con lo store di
+--     provenienza e il Profilo cloud (profiloCloudId) a cui appartengono.
+-- Aggiungere un nuovo store in futuro non richiede alcuna modifica qui.
+-- ============================================================================
 
 create schema if not exists finsteady;
+grant usage on schema finsteady to authenticated;
 
-drop table if exists finsteady.sync_records cascade;
-drop function if exists finsteady.fp_sync_upsert(uuid, text, text, jsonb, boolean, timestamptz);
+-- ----------------------------------------------------------------------------
+-- Funzione di appoggio: "updatedAt" sempre autorevole lato server, per non dipendere
+-- dall'orologio (potenzialmente sfasato) di ciascun dispositivo nel confronto "chi ha
+-- l'ultima modifica" usato dal client per i conflitti (last-write-wins).
+-- ----------------------------------------------------------------------------
+create or replace function finsteady.set_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new."updatedAt" := now();
+  return new;
+end;
+$$;
 
-create table if not exists finsteady.cloud_snapshot (
-  user_id uuid not null references auth.users(id) on delete cascade,
-  profilo_locale_id text not null,
-  payload jsonb not null,
-  aggiornato_il timestamptz not null default now(),
-  primary key (user_id, profilo_locale_id)
+-- ============================================================================
+-- profili_cloud — registro leggero dei Profili collegati al cloud
+-- ============================================================================
+create table if not exists finsteady.profili_cloud (
+  "cloudId" uuid primary key,
+  "userId" uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  nome text not null,
+  "numeroRecord" int,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz
 );
 
--- Row Level Security: ogni utente vede/scrive solo le proprie righe.
-alter table finsteady.cloud_snapshot enable row level security;
+alter table finsteady.profili_cloud enable row level security;
 
-drop policy if exists cloud_snapshot_select_proprio on finsteady.cloud_snapshot;
-create policy cloud_snapshot_select_proprio on finsteady.cloud_snapshot
-  for select using (user_id = auth.uid());
+drop policy if exists "solo i propri profili" on finsteady.profili_cloud;
+create policy "solo i propri profili" on finsteady.profili_cloud
+  for all using ("userId" = auth.uid()) with check ("userId" = auth.uid());
 
-drop policy if exists cloud_snapshot_insert_proprio on finsteady.cloud_snapshot;
-create policy cloud_snapshot_insert_proprio on finsteady.cloud_snapshot
-  for insert with check (user_id = auth.uid());
+drop trigger if exists trg_updated_at on finsteady.profili_cloud;
+create trigger trg_updated_at before insert or update on finsteady.profili_cloud
+  for each row execute function finsteady.set_updated_at();
 
-drop policy if exists cloud_snapshot_update_proprio on finsteady.cloud_snapshot;
-create policy cloud_snapshot_update_proprio on finsteady.cloud_snapshot
-  for update using (user_id = auth.uid()) with check (user_id = auth.uid());
+create index if not exists idx_profili_cloud_user on finsteady.profili_cloud ("userId");
 
-drop policy if exists cloud_snapshot_delete_proprio on finsteady.cloud_snapshot;
-create policy cloud_snapshot_delete_proprio on finsteady.cloud_snapshot
-  for delete using (user_id = auth.uid());
+grant select, insert, update, delete on finsteady.profili_cloud to authenticated;
 
--- A differenza dello schema "public" (dove Supabase pre-concede l'accesso di base ai ruoli
--- anon/authenticated), uno schema creato da zero parte senza alcun permesso: vanno concessi
--- esplicitamente, altrimenti ogni chiamata fallisce con "permission denied for schema
--- finsteady" ancora prima che le RLS policy entrino in gioco.
-grant usage on schema finsteady to authenticated;
-grant select, insert, update, delete on finsteady.cloud_snapshot to authenticated;
+-- ============================================================================
+-- record_sync — tutti i record di dominio di tutti gli store, di tutti i Profili collegati
+-- ============================================================================
+create table if not exists finsteady.record_sync (
+  id uuid primary key default gen_random_uuid(),
+  "userId" uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  "profiloCloudId" uuid not null references finsteady.profili_cloud("cloudId") on delete cascade,
+  store text not null,
+  "recordId" text not null,
+  dati jsonb not null,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz,
+  unique ("profiloCloudId", store, "recordId")
+);
 
--- ============================================================================================
--- PASSAGGIO MANUALE OBBLIGATORIO (non eseguibile da SQL): a differenza di "public", uno schema
--- creato da zero non è raggiungibile dalle API finché non lo esponi esplicitamente.
--- Nel pannello Supabase: Project Settings → API → sezione "Exposed schemas" (o "Data API" a
--- seconda della versione dell'interfaccia) → aggiungi "finsteady" all'elenco → Save.
--- Senza questo passaggio, ogni chiamata da js/sync/* fallirà con un errore tipo
--- "The schema must be one of the following: public" anche se lo script sopra è andato a buon
--- fine. Dettagli in SETUP-SUPABASE.md.
--- ============================================================================================
+alter table finsteady.record_sync enable row level security;
+
+drop policy if exists "solo i propri record" on finsteady.record_sync;
+create policy "solo i propri record" on finsteady.record_sync
+  for all using ("userId" = auth.uid()) with check ("userId" = auth.uid());
+
+drop trigger if exists trg_updated_at on finsteady.record_sync;
+create trigger trg_updated_at before insert or update on finsteady.record_sync
+  for each row execute function finsteady.set_updated_at();
+
+-- Indice usato dal pull (filtra per Profilo cloud, ordina/filtra per updatedAt).
+create index if not exists idx_record_sync_pull on finsteady.record_sync ("profiloCloudId", "updatedAt");
+
+grant select, insert, update, delete on finsteady.record_sync to authenticated;

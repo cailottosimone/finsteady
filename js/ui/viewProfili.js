@@ -152,7 +152,7 @@ function collegaBackupProfili(container, attivo) {
     try {
       const pacchetto = await esportaProfiloSingolo(attivo.id);
       const dataFile = new Date().toISOString().substring(0, 10);
-      scaricaJson(pacchetto, `financial-planner-profilo-${attivo.nome}-${dataFile}.json`);
+      scaricaJson(pacchetto, `finsteady-profilo-${attivo.nome}-${dataFile}.json`);
     } catch (err) {
       alert(err.message);
     }
@@ -162,7 +162,7 @@ function collegaBackupProfili(container, attivo) {
     try {
       const pacchetto = await esportaTuttiIProfili();
       const dataFile = new Date().toISOString().substring(0, 10);
-      scaricaJson(pacchetto, `financial-planner-tutti-i-profili-${dataFile}.json`);
+      scaricaJson(pacchetto, `finsteady-tutti-i-profili-${dataFile}.json`);
     } catch (err) {
       alert(err.message);
     }
