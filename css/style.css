@@ -519,7 +519,7 @@ button:hover { border-color: var(--colore-testo-debole); background: var(--color
 
 .riga-checkbox { flex-direction: row !important; align-items: center; gap: 8px !important; }
 
-.form-azioni { display: flex; gap: 8px; margin-top: 6px; }
+.form-azioni { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
 
 /* ---------- Griglia pulsanti Azioni (Dashboard) ---------- */
 
@@ -956,33 +956,74 @@ button:hover { border-color: var(--colore-testo-debole); background: var(--color
      valore assoluto in px, non influenzato dal riscalamento della radice qui sopra. */
   input, select, textarea { font-size: 16px; }
 
-  /* Vedi punto 2: la tabella scorre in orizzontale (v0.28) E le celle non vanno più a capo, così
-     è davvero la larghezza a scorrere e non il testo ad accartocciarsi su più righe. */
+  /* Vedi punto 2 (v0.30, sostituisce l'approccio "scorrimento orizzontale" di v0.28/v0.29):
+     ogni riga diventa una SCHEDA impilata verticalmente, ogni cella mostra la propria etichetta
+     di colonna (assegnata automaticamente da js/utils/tabelleMobiliUtils.js) sopra il valore.
+     Niente più scorrimento laterale su nessuna tabella dell'app: era comunque un ripiego, non
+     una vera soluzione, per tabelle con molte colonne su schermi stretti. */
   .tabella, .tabella-integrita {
     display: block;
-    max-width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    border: none;
   }
-  .tabella th, .tabella td,
-  .tabella-integrita th, .tabella-integrita td {
-    white-space: nowrap;
-    padding: 7px 10px; /* vedi punto 4: meno alto di prima (10px 8px), un filo più largo in
-                           orizzontale per compensare la perdita del testo a capo */
+  .tabella thead, .tabella-integrita thead { display: none; }
+  .tabella tbody, .tabella-integrita tbody { display: block; }
+  .tabella tr, .tabella-integrita tr {
+    display: block;
+    border: 1px solid var(--colore-bordo);
+    border-radius: var(--raggio-sm);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    background: var(--colore-sfondo);
   }
-  /* Eccezione: la colonna Descrizione (Movimenti) e simili contengono testo libero
-     potenzialmente lungo — utile poterlo comunque leggere su più righe quando la tabella è già
-     scrollabile, invece di produrre una singola colonna larghissima. */
-  .tabella td.colonna-descrizione { white-space: normal; min-width: 200px; }
+  /* Una riga di dettaglio/espansione (<td colspan>, es. Obiettivi di un Fondo, Budget di un
+     Conto) si "aggancia" visivamente alla scheda della riga principale appena sopra, invece di
+     comparire come una scheda scollegata a sé stante. */
+  .tabella tr:has(> td[colspan]), .tabella-integrita tr:has(> td[colspan]) {
+    margin-top: -9px;
+    border-top: none;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    padding-top: 2px;
+  }
+  .tabella td, .tabella-integrita td {
+    display: block;
+    border-bottom: 1px solid var(--colore-sfondo-soft);
+    padding: 6px 0;
+    white-space: normal;
+  }
+  .tabella td:last-child, .tabella-integrita td:last-child { border-bottom: none; }
+  /* L'etichetta di colonna, sopra il valore — assente (niente riga generata) quando la cella
+     non ne ha una: colonne senza intestazione testuale (checkbox, icone azione) o righe di
+     dettaglio non decorate da tabelleMobiliUtils.js. */
+  .tabella td[data-label]:not([data-label=""])::before,
+  .tabella-integrita td[data-label]:not([data-label=""])::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--colore-testo-soft);
+    margin-bottom: 3px;
+  }
 
-  /* Le azioni per riga (icone) restano su una sola riga invece di impilarsi su 2-3 righe: è
-     proprio questo impilamento, dentro una colonna forzata stretta, la causa principale delle
-     "righe altissime" segnalate in Conti → Fondi. */
-  .tabella td .azioni-riga, .tabella-integrita td .azioni-riga { flex-wrap: nowrap; }
-
-  /* Il menu "Altre azioni" (Dashboard) è ancorato a destra della sua Azione: su schermi molto
-     stretti, con min-width:230px, poteva sconfinare oltre il bordo sinistro dello schermo. */
-  .dropdown-azioni { max-width: calc(100vw - 32px); }
+  /* Il menu "Altre azioni" (Dashboard) era ancorato a destra del suo pulsante (right:0): su
+     schermi stretti, con min-width:230px, poteva sconfinare oltre il bordo sinistro dello
+     schermo (segnalato dall'utente). Diventa un pannello a piena larghezza subito sotto il
+     pulsante, in flusso normale: nessun rischio di uscire dai bordi, qualunque sia la posizione
+     del pulsante che lo apre. .menu-altre-azioni deve occupare tutta la riga (era largo quanto
+     il solo pulsante "Altre azioni"), altrimenti il dropdown width:100% erediterebbe comunque
+     quella stessa larghezza ridotta. */
+  .menu-altre-azioni { width: 100%; }
+  .menu-altre-azioni .azione-btn { width: 100%; }
+  .dropdown-azioni {
+    position: static;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    margin-top: 6px;
+    box-shadow: none;
+  }
 
   /* Un po' meno respiro nei dialoghi modali, per lasciare più spazio al contenuto sui
      telefoni più piccoli (~320-360px). */

@@ -1,5 +1,36 @@
 # Changelog — Financial Planner
 
+## v0.30-001 — Correzioni mobile dopo secondo riscontro utente (tabelle a schede, overflow residui)
+
+### Modificato
+Solo CSS/markup + un nuovo modulo di utilità, nessuna modifica funzionale.
+
+- **Tabelle: da scorrimento orizzontale a schede impilate.** Il riscontro dell'utente ("le
+  tabelle risultano troppo larghe per mobile e difficilmente utilizzabili") ha superato
+  l'approccio di v0.28/v0.29 (tabella scorrevole in orizzontale): ora, sotto i 720px, ogni riga
+  di **qualunque** tabella dell'app diventa una scheda verticale, ogni cella mostra la propria
+  etichetta di colonna sopra il valore. Nessuno scorrimento laterale residuo su nessuna tabella.
+  Implementato con un nuovo modulo, `js/utils/tabelleMobiliUtils.js` — un `MutationObserver`
+  agganciato una sola volta in `app.js` che assegna automaticamente `data-label` ad ogni cella
+  leggendo l'intestazione di colonna corrispondente, per qualunque tabella (`.tabella`/
+  `.tabella-integrita`) presente ora o generata in seguito da qualsiasi vista, presente o
+  futura: **nessuna delle ~35 viste che generano tabelle è stata toccata**. Le righe di
+  dettaglio/espansione (`<td colspan>`, es. Obiettivi di un Fondo) si agganciano visivamente
+  alla scheda della riga principale invece di comparire come schede scollegate a sé stanti.
+- **Dropdown "Altre azioni" (Dashboard) usciva dallo schermo a sinistra** (segnalato con
+  screenshot): era ancorato a destra del pulsante che lo apre con `position:absolute; right:0`,
+  e su schermi stretti la sua larghezza minima (230px) lo faceva sconfinare oltre il bordo
+  sinistro. Ora, sotto i 720px, diventa un pannello a piena larghezza in flusso normale subito
+  sotto il pulsante: nessun rischio di uscire dai bordi indipendentemente dalla posizione del
+  pulsante.
+- **Righe di pulsanti che sforavano lo schermo** (`.form-azioni` — es. "2. Strategia di
+  Allocazione" in Registra Entrata, 4 pulsanti su una riga senza andare a capo): mancava
+  `flex-wrap: wrap` nella regola base. Corretto globalmente (non solo mobile): su desktop,
+  dove lo spazio è sufficiente, non cambia nulla, i pulsanti restavano già su una riga.
+- **"Budget assegnato per Conto" (Dashboard) leggermente fuori dai margini**: stessa causa
+  radice delle tabelle sopra (colonna azione compressa in poco spazio) — risolta dallo stesso
+  fix generale, nessuna modifica specifica necessaria.
+
 ## v0.29-001 — Correzioni mobile dopo riscontro utente (nav, tabelle, densità)
 
 ### Modificato

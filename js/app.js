@@ -16,6 +16,7 @@ import { impostaNomeDatabase } from './db-schema.js';
 import { htmlAvatar } from './utils/avatarUtils.js';
 import { montaSyncIndicator } from './components/syncIndicator.js';
 import { initSyncProfilo } from './data/syncProfilo.js';
+import { avviaDecorazioneTabelleMobili } from './utils/tabelleMobiliUtils.js';
 
 // Voci di navigazione principale (in ordine di visualizzazione). Le viste con
 // nascostaDaNav:true non compaiono come bottone in nav, ma restano raggiungibili tramite
@@ -116,6 +117,13 @@ async function avvia() {
 
   costruisciNav(profiloAttivo);
   mostraVista('dashboard');
+
+  // Su schermi piccoli le tabelle diventano schede impilate (css/style.css): questo assegna
+  // automaticamente l'etichetta di colonna ad ogni cella, per qualunque tabella dell'app,
+  // presente ora o generata in seguito (vedi js/utils/tabelleMobiliUtils.js). Su desktop non ha
+  // alcun effetto visibile (le etichette esistono nel markup ma la regola CSS che le mostra è
+  // solo dentro il blocco @media mobile).
+  avviaDecorazioneTabelleMobili(contenuto);
 
   // Cloud Sync (facoltativo): avviato dopo che il Profilo attivo è noto, così sincronizza
   // sempre e solo il database giusto. Se l'utente non si è mai collegato al cloud, resta
