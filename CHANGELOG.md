@@ -1,5 +1,26 @@
 # Changelog — FinSteady
 
+## v0.34-001 — Correzioni di contrasto sulla fascia colorata, Categorie come tabella semplice
+
+### Modificato
+- **Etichetta "CONTO"/"NOME"/... illeggibile sulla fascia viola**: il colore bianco previsto
+  per l'etichetta non vinceva sul grigio scuro di default a causa di una regola CSS con
+  specificità più alta (un `:not()` involontariamente "pesava" più del previsto) — bug puramente
+  di specificità CSS, non concettuale. Corretto rendendo la regola dell'etichetta bianca
+  sicuramente vincente.
+- **Il colore non copriva l'area del pulsante (chevron) in alto a destra**, lasciando un
+  angolo bianco scoperto proprio lì (segnalato con screenshot): la fascia calcolava lo spazio da
+  coprire in base al padding normale della scheda, non a quello (maggiorato) riservato per il
+  pulsante singolo in quell'angolo. Ora la fascia si estende fin sotto al pulsante.
+- **Tag/badge dallo sfondo grigio chiaro (Inattivo, Stornato, Archiviato...) invisibili sulla
+  fascia colorata**: non avevano un colore di testo proprio, ereditavano quello del contesto —
+  bianco su sfondo quasi bianco. Ora hanno sempre un colore di testo esplicito.
+- **Categorie (Impostazioni) torna a essere una tabella semplice**, non più schede: sono voci di
+  un elenco a discesa, non serviva il trattamento riservato a tabelle con informazioni più
+  ricche. Nuova classe opzionale `tabella-compatta` (`css/style.css`, `js/ui/viewCategorie.js`):
+  qualunque vista può aggiungerla a una `.tabella` per restare una tabella vera anche su mobile,
+  solo più compatta (padding ridotto, niente etichette ripetute sopra ogni valore).
+
 ## v0.33-001 — Terzo giro di rifiniture mobile (schede annidate, colore, Categorie)
 
 ### Modificato
