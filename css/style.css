@@ -968,14 +968,20 @@ button:hover { border-color: var(--colore-testo-debole); background: var(--color
      ogni riga diventa una SCHEDA impilata verticalmente, ogni cella mostra la propria etichetta
      di colonna (assegnata automaticamente da js/utils/tabelleMobiliUtils.js) sopra il valore.
      Niente più scorrimento laterale su nessuna tabella dell'app: era comunque un ripiego, non
-     una vera soluzione, per tabelle con molte colonne su schermi stretti. */
-  .tabella, .tabella-integrita {
+     una vera soluzione, per tabelle con molte colonne su schermi stretti.
+     ECCEZIONE — .tabella-compatta: per liste semplici a poche colonne che non hanno bisogno di
+     diventare schede (es. Categorie, che vive in Impostazioni: sono voci di un elenco, non
+     unità informative complesse) una vista può aggiungere questa classe accanto a "tabella" per
+     restare una tabella vera e propria anche su mobile, solo più compatta. Tutte le regole
+     "scheda" qui sotto escludono esplicitamente .tabella-compatta con :not(), invece di provare
+     a neutralizzarle una per una dopo: più semplice da mantenere corretto. */
+  .tabella:not(.tabella-compatta), .tabella-integrita:not(.tabella-compatta) {
     display: block;
     border: none;
   }
-  .tabella thead, .tabella-integrita thead { display: none; }
-  .tabella tbody, .tabella-integrita tbody { display: block; }
-  .tabella tr, .tabella-integrita tr {
+  .tabella:not(.tabella-compatta) thead, .tabella-integrita:not(.tabella-compatta) thead { display: none; }
+  .tabella:not(.tabella-compatta) tbody, .tabella-integrita:not(.tabella-compatta) tbody { display: block; }
+  .tabella:not(.tabella-compatta) tr, .tabella-integrita:not(.tabella-compatta) tr {
     display: block;
     position: relative;
     border: 1px solid var(--colore-bordo-forte);
@@ -993,22 +999,32 @@ button:hover { border-color: var(--colore-testo-debole); background: var(--color
      resta nel flusso normale. Righe con PIÙ pulsanti azione (es. Fondi:
      modifica/duplica/archivia/elimina) non sono toccate da questa regola — restano nel flusso
      normale, hanno bisogno dello spazio di una riga dedicata. */
-  .tabella tr:has(> td[data-label=""] > button.btn-icona:only-child),
-  .tabella-integrita tr:has(> td[data-label=""] > button.btn-icona:only-child) {
+  .tabella:not(.tabella-compatta) tr:has(> td[data-label=""] > button.btn-icona:only-child),
+  .tabella-integrita:not(.tabella-compatta) tr:has(> td[data-label=""] > button.btn-icona:only-child) {
     padding-right: 54px;
   }
-  .tabella td[data-label=""]:has(> button.btn-icona:only-child),
-  .tabella-integrita td[data-label=""]:has(> button.btn-icona:only-child) {
+  .tabella:not(.tabella-compatta) td[data-label=""]:has(> button.btn-icona:only-child),
+  .tabella-integrita:not(.tabella-compatta) td[data-label=""]:has(> button.btn-icona:only-child) {
     position: absolute;
     top: 10px;
     right: 10px;
     border: none;
     padding: 0;
   }
+  /* Se la scheda ha ANCHE la fascia colorata sul nome (sotto), quella deve estendersi fin sotto
+     al pulsante in alto a destra — non fermarsi al bordo della riserva di spazio — altrimenti
+     resta uno spazio bianco scoperto proprio dove sta il pulsante (segnalato dall'utente,
+     screenshot: "il colore non copre anche dove c'è l'icona"). */
+  .tabella:not(.tabella-compatta) tr:has(> td[data-label=""] > button.btn-icona:only-child) > td.cella-nome-riga,
+  .tabella-integrita:not(.tabella-compatta) tr:has(> td[data-label=""] > button.btn-icona:only-child) > td.cella-nome-riga {
+    margin-right: -54px;
+    padding-right: 54px;
+  }
   /* Una riga di dettaglio/espansione (<td colspan>, es. Obiettivi di un Fondo, Budget di un
      Conto) si "aggancia" visivamente alla scheda della riga principale appena sopra, invece di
      comparire come una scheda scollegata a sé stante. */
-  .tabella tr:has(> td[colspan]), .tabella-integrita tr:has(> td[colspan]) {
+  .tabella:not(.tabella-compatta) tr:has(> td[colspan]),
+  .tabella-integrita:not(.tabella-compatta) tr:has(> td[colspan]) {
     margin-top: -9px;
     border-top: none;
     border-top-left-radius: 0;
@@ -1016,18 +1032,20 @@ button:hover { border-color: var(--colore-testo-debole); background: var(--color
     padding-top: 2px;
     box-shadow: none;
   }
-  .tabella td, .tabella-integrita td {
+  .tabella:not(.tabella-compatta) td, .tabella-integrita:not(.tabella-compatta) td {
     display: block;
     border-bottom: 1px solid var(--colore-sfondo-soft);
     padding: 6px 0;
     white-space: normal;
   }
-  .tabella td:last-child, .tabella-integrita td:last-child { border-bottom: none; }
+  .tabella:not(.tabella-compatta) td:last-child, .tabella-integrita:not(.tabella-compatta) td:last-child { border-bottom: none; }
   /* L'etichetta di colonna, sopra il valore — assente (niente riga generata) quando la cella
      non ne ha una: colonne senza intestazione testuale (checkbox, icone azione) o righe di
-     dettaglio non decorate da tabelleMobiliUtils.js. */
-  .tabella td[data-label]:not([data-label=""])::before,
-  .tabella-integrita td[data-label]:not([data-label=""])::before {
+     dettaglio non decorate da tabelleMobiliUtils.js. Selettore con [data-label] ripetuto
+     (invece di affidarsi solo a :not()) per tenere la specificità più alta della regola
+     cella-nome-riga qui sotto, che deve poterla sovrascrivere sempre. */
+  .tabella:not(.tabella-compatta) td[data-label]:not([data-label=""])::before,
+  .tabella-integrita:not(.tabella-compatta) td[data-label]:not([data-label=""])::before {
     content: attr(data-label);
     display: block;
     font-size: 0.68rem;
@@ -1043,7 +1061,8 @@ button:hover { border-color: var(--colore-testo-debole); background: var(--color
      per distinguere a colpo d'occhio dove finisce una scheda e comincia la successiva. La
      fascia si estende fino ai bordi della scheda (margini negativi pari al padding della riga
      qui sopra) e ne segue l'arrotondamento in alto. */
-  .tabella td.cella-nome-riga, .tabella-integrita td.cella-nome-riga {
+  .tabella:not(.tabella-compatta) td.cella-nome-riga,
+  .tabella-integrita:not(.tabella-compatta) td.cella-nome-riga {
     margin: -10px -12px 8px -12px;
     padding: 9px 12px;
     background: var(--colore-operativita);
@@ -1053,8 +1072,32 @@ button:hover { border-color: var(--colore-testo-debole); background: var(--color
     font-weight: 700;
     color: #FFFFFF;
   }
-  .tabella td.cella-nome-riga::before, .tabella-integrita td.cella-nome-riga::before {
+  /* L'etichetta "CONTO"/"NOME"/... sopra il valore, dentro la fascia colorata: deve restare
+     leggibile in bianco semi-trasparente, non nel grigio scuro di default (che sulla fascia
+     viola risultava pressoché invisibile, segnalato dall'utente) — [data-label] ripetuto qui
+     per essere sicuramente più specifico della regola generale sopra, che altrimenti vince
+     per via del suo :not([data-label=""]). */
+  .tabella:not(.tabella-compatta) td[data-label].cella-nome-riga::before,
+  .tabella-integrita:not(.tabella-compatta) td[data-label].cella-nome-riga::before {
     color: rgba(255, 255, 255, 0.78);
+  }
+  /* Tag/badge dal colore di sfondo chiaro (es. "Inattivo", "Stornato", "Archiviato") non hanno
+     un colore di testo proprio, per design: ereditano quello del contesto in cui si trovano. Va
+     benissimo su sfondo bianco, ma dentro la fascia colorata (testo bianco) diventavano testo
+     bianco su sfondo quasi bianco — invisibili (segnalato dall'utente). Un colore di testo
+     sempre esplicito sul badge risolve alla radice, non solo dentro le schede mobile. */
+  .badge { color: var(--colore-testo); }
+
+  /* .tabella-compatta: resta una tabella vera, solo più stretta/compatta — nessuna etichetta
+     ripetuta (l'intestazione <thead> è già visibile), nessuna fascia colorata. */
+  .tabella.tabella-compatta, .tabella-integrita.tabella-compatta { font-size: 0.85rem; }
+  .tabella.tabella-compatta th, .tabella.tabella-compatta td,
+  .tabella-integrita.tabella-compatta th, .tabella-integrita.tabella-compatta td {
+    padding: 7px 6px;
+  }
+  .tabella.tabella-compatta td[data-label]::before,
+  .tabella-integrita.tabella-compatta td[data-label]::before {
+    content: none;
   }
 
   /* Il menu "Altre azioni" (Dashboard) era ancorato a destra del suo pulsante (right:0): su

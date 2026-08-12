@@ -69,7 +69,7 @@ function renderTabellaCategorie(el, categorieComplete, stato, container) {
 
   el.innerHTML = categorie.length === 0
     ? '<p class="nota">Nessuna Categoria trovata.</p>'
-    : `<table class="tabella">
+    : `<table class="tabella tabella-compatta">
         <thead><tr>
           ${intestazioneOrdinabile('Nome', 'nome', stato)}
           ${intestazioneOrdinabile('Ordinamento', 'ordinamento', stato)}
