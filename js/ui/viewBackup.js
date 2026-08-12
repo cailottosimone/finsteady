@@ -32,7 +32,7 @@ export async function renderBackup(container) {
     const a = document.createElement('a');
     const dataFile = new Date().toISOString().substring(0, 10);
     a.href = url;
-    a.download = `financial-planner-backup-${dataFile}.json`;
+    a.download = `finsteady-backup-${dataFile}.json`;
     a.click();
     URL.revokeObjectURL(url);
   });

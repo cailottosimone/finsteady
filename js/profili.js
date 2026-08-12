@@ -1,4 +1,4 @@
-// Profili — isolamento completo tra "utenze" diverse dello stesso Financial Planner (es. una
+// Profili — isolamento completo tra "utenze" diverse dello stesso FinSteady (es. una
 // persona diversa, o ricominciare da capo senza perdere i dati esistenti).
 //
 // Scelta architetturale: NESSUN filtro applicativo (un campo "profiloId" su ogni record) — un

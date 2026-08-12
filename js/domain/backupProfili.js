@@ -120,7 +120,7 @@ export async function esportaTuttiIProfili() {
 // id né nome noti, da abbinare per l'utente al Profilo attivo o a uno nuovo.
 function estraiProfiliDaPacchetto(pacchetto) {
   if (!pacchetto || typeof pacchetto !== 'object') {
-    throw new Error('Il file selezionato non è un backup valido di Financial Planner.');
+    throw new Error('Il file selezionato non è un backup valido di FinSteady.');
   }
   if (Array.isArray(pacchetto.profili)) {
     if (pacchetto.profili.length === 0) throw new Error('Il file non contiene alcun Profilo da importare.');
@@ -129,7 +129,7 @@ function estraiProfiliDaPacchetto(pacchetto) {
   if (pacchetto.dati) {
     return [{ profiloId: null, nome: null, dati: pacchetto.dati }];
   }
-  throw new Error('Il file selezionato non è un backup valido di Financial Planner.');
+  throw new Error('Il file selezionato non è un backup valido di FinSteady.');
 }
 
 // Analizza un pacchetto di import e lo confronta con i Profili già presenti in locale, così la

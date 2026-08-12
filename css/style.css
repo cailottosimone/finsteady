@@ -1,5 +1,5 @@
 /* ============================================================
-   Financial Planner — Design System
+   FinSteady — Design System
    Bianco arioso, due accenti vivaci e limitati che rispecchiano
    la separazione concettuale Patrimonio (Fondi) / Operatività (Budget).
    ============================================================ */
@@ -969,21 +969,44 @@ button:hover { border-color: var(--colore-testo-debole); background: var(--color
   .tabella tbody, .tabella-integrita tbody { display: block; }
   .tabella tr, .tabella-integrita tr {
     display: block;
-    border: 1px solid var(--colore-bordo);
-    border-radius: var(--raggio-sm);
-    padding: 10px 12px;
-    margin-bottom: 8px;
+    position: relative;
+    border: 1px solid var(--colore-bordo-forte);
+    border-radius: var(--raggio);
+    padding: 12px 14px;
+    margin-bottom: 12px;
     background: var(--colore-sfondo);
+    box-shadow: var(--ombra);
+  }
+  /* Una sola riga (icona) come azione — es. il chevron "Dettaglio" di Budget assegnato per
+     Conto, o "Rimuovi riga"/"Elimina" in altre tabelle — si sposta in un angolo invece di
+     occupare un'intera riga della scheda per sé sola: più spazio usato meglio (segnalato
+     dall'utente, screenshot). Solo per pulsanti-icona (.btn-icona, senza testo): un pulsante
+     con testo (es. "Scarica come nuovo Profilo" in Cloud Sync) non ci starebbe in un angolo,
+     resta nel flusso normale. Righe con PIÙ pulsanti azione (es. Fondi:
+     modifica/duplica/archivia/elimina) non sono toccate da questa regola — restano nel flusso
+     normale, hanno bisogno dello spazio di una riga dedicata. */
+  .tabella tr:has(> td[data-label=""] > button.btn-icona:only-child),
+  .tabella-integrita tr:has(> td[data-label=""] > button.btn-icona:only-child) {
+    padding-right: 54px;
+  }
+  .tabella td[data-label=""]:has(> button.btn-icona:only-child),
+  .tabella-integrita td[data-label=""]:has(> button.btn-icona:only-child) {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    border: none;
+    padding: 0;
   }
   /* Una riga di dettaglio/espansione (<td colspan>, es. Obiettivi di un Fondo, Budget di un
      Conto) si "aggancia" visivamente alla scheda della riga principale appena sopra, invece di
      comparire come una scheda scollegata a sé stante. */
   .tabella tr:has(> td[colspan]), .tabella-integrita tr:has(> td[colspan]) {
-    margin-top: -9px;
+    margin-top: -13px;
     border-top: none;
     border-top-left-radius: 0;
     border-top-right-radius: 0;
-    padding-top: 2px;
+    padding-top: 4px;
+    box-shadow: none;
   }
   .tabella td, .tabella-integrita td {
     display: block;
@@ -1005,6 +1028,13 @@ button:hover { border-color: var(--colore-testo-debole); background: var(--color
     letter-spacing: 0.04em;
     color: var(--colore-testo-soft);
     margin-bottom: 3px;
+  }
+  /* La prima cella con etichetta di ogni riga (quasi sempre Nome/Conto/Descrizione — assegnata
+     da js/utils/tabelleMobiliUtils.js) più in evidenza: con molte schede in fila, aiuta a
+     distinguere a colpo d'occhio dove finisce l'una e comincia l'altra. */
+  .tabella td.cella-nome-riga, .tabella-integrita td.cella-nome-riga {
+    font-size: 1.02rem;
+    font-weight: 700;
   }
 
   /* Il menu "Altre azioni" (Dashboard) era ancorato a destra del suo pulsante (right:0): su

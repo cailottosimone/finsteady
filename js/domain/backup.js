@@ -25,7 +25,7 @@ export async function esportaTutto() {
 // prima di chiamare questa funzione.
 export async function importaTutto(pacchetto) {
   if (!pacchetto || typeof pacchetto !== 'object' || !pacchetto.dati) {
-    throw new Error('Il file selezionato non è un backup valido di Financial Planner.');
+    throw new Error('Il file selezionato non è un backup valido di FinSteady.');
   }
   for (const def of STORE_DEFINITIONS) {
     await dbClear(def.nome);

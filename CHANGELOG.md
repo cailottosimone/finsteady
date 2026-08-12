@@ -1,4 +1,30 @@
-# Changelog — Financial Planner
+# Changelog — FinSteady
+
+## v0.31-001 — Rebranding FinSteady, rifinitura schede mobile
+
+### Modificato
+- **Rinominata l'app in FinSteady** ovunque sia visibile: titolo scheda browser (`<title>`),
+  intestazione/Dashboard (`<h1>`), messaggi di errore import backup, nome dei file di backup
+  scaricati (`finsteady-backup-...json`, `finsteady-profilo-...json`,
+  `finsteady-tutti-i-profili-...json`), commenti di intestazione nei file sorgente,
+  changelog. **Non toccati deliberatamente** (identificatori tecnici di storage — cambiarli
+  farebbe perdere l'accesso ai dati già salvati di chi usa l'app): il nome del database
+  IndexedDB (`financial-planner-db`), il registro dei Profili
+  (`financial-planner-profili-registro`) e il prefisso dei nomi database dei Profili creati
+  (`financial-planner-db-{id}`). Nota lasciata in `js/db-schema.js` a beneficio di sviluppi
+  futuri. Convenzione di versionamento zip invariata (`repository-financial-planner-vX.Y-NNN`,
+  come da prassi consolidata).
+- **Schede mobile più distinte tra loro**: bordo più marcato, ombra, margine tra una scheda e
+  la successiva aumentato (8px → 12px) — con molte righe in fila, prima si confondevano.
+- **Nome/valore identificativo di ogni riga in evidenza**: la prima cella con etichetta di ogni
+  riga (quasi sempre Nome/Conto/Descrizione, individuata automaticamente da
+  `js/utils/tabelleMobiliUtils.js`) ora è in grassetto e leggermente più grande.
+- **Celle con un solo pulsante-icona spostate in un angolo** invece di occupare un'intera riga
+  della scheda per sé sole (es. il chevron "Dettaglio" di "Budget assegnato per Conto",
+  segnalato con screenshot; "Rimuovi riga" in Distribuisci/Registra Entrata; "Elimina" voce di
+  Piano) — più spazio usato meglio. Non si applica a celle con più pulsanti (es. le azioni di
+  Fondi/Movimenti) né a pulsanti con testo (es. "Scarica come nuovo Profilo" in Cloud Sync):
+  quelli restano nel flusso normale, ne hanno bisogno.
 
 ## v0.30-001 — Correzioni mobile dopo secondo riscontro utente (tabelle a schede, overflow residui)
 

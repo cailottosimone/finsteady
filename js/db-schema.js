@@ -1,4 +1,4 @@
-// Definizione dello schema IndexedDB per Financial Planner.
+// Definizione dello schema IndexedDB per FinSteady.
 //
 // Principio architetturale: questo file è l'UNICO punto in cui viene definita la struttura
 // del database (nomi store, keyPath, indici). Le migrazioni future devono essere ADDITIVE:
@@ -16,6 +16,13 @@
 // qualunque modulo di dominio effettui la prima connessione (storage.js mette in cache la
 // connessione al primo utilizzo: cambiare DB_NAME dopo non avrebbe più effetto in questa stessa
 // sessione, per questo un cambio di Profilo richiede un ricaricamento della pagina).
+// NOTA sulla ridenominazione in FinSteady: questa stringa resta 'financial-planner-db'
+// deliberatamente, anche dopo il rebrand — è la chiave con cui il browser identifica il
+// database IndexedDB di chi ha già dati salvati. Cambiarla creerebbe un database vuoto con un
+// nome diverso, facendo sparire (non cancellare, ma rendere irraggiungibili) tutti i dati
+// esistenti degli utenti già in uso. Stesso discorso per DB_REGISTRO e
+// DB_STORICO_PREESISTENTE in js/profili.js. Il nome visibile dell'app (titolo, intestazione)
+// è ridenominato liberamente: sono le chiavi tecniche di storage a dover restare stabili.
 export let DB_NAME = 'financial-planner-db';
 export function impostaNomeDatabase(nome) {
   DB_NAME = nome;

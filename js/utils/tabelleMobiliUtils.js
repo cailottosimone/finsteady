@@ -17,6 +17,11 @@
 // dettaglio/espansione con <td colspan="...">) vengono lasciate senza data-label: in modalità
 // scheda diventano semplicemente un blocco a piena larghezza, che è il comportamento corretto
 // per un pannello di dettaglio.
+//
+// La prima cella con un'etichetta non vuota di ogni riga riceve anche la classe
+// 'cella-nome-riga' (css/style.css la mette in grassetto, solo in modalità scheda): è quasi
+// sempre la colonna che identifica la riga (Nome, Conto, Descrizione...) — utile per distinguere
+// a colpo d'occhio dove finisce una scheda e comincia la successiva quando ce ne sono molte.
 
 function estraiEtichette(tabella) {
   return Array.from(tabella.querySelectorAll(':scope > thead > tr > th')).map((th) => th.textContent.trim());
@@ -28,7 +33,16 @@ function decoraTabella(tabella) {
   tabella.querySelectorAll(':scope > tbody > tr').forEach((tr) => {
     const celle = tr.querySelectorAll(':scope > td');
     if (celle.length !== etichette.length) return; // riga di dettaglio/espansione: nessuna etichetta
-    celle.forEach((td, i) => td.setAttribute('data-label', etichette[i]));
+    let primaAssegnata = false;
+    celle.forEach((td, i) => {
+      const etichetta = etichette[i];
+      td.setAttribute('data-label', etichetta);
+      td.classList.remove('cella-nome-riga');
+      if (!primaAssegnata && etichetta) {
+        td.classList.add('cella-nome-riga');
+        primaAssegnata = true;
+      }
+    });
   });
 }
 

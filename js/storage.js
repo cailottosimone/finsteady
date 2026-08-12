@@ -1,4 +1,4 @@
-// storage.js — UNICO punto di accesso a IndexedDB per Financial Planner.
+// storage.js — UNICO punto di accesso a IndexedDB per FinSteady.
 //
 // Regola architetturale rigida: nessun altro modulo dell'app deve aprire connessioni,
 // transazioni o object store direttamente. Ogni lettura/scrittura passa da qui.
