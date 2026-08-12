@@ -41,6 +41,7 @@ const VISTE = {
 
 const contenuto = document.querySelector('#contenuto');
 const nav = document.querySelector('#nav-principale');
+const btnHamburger = document.querySelector('#btn-hamburger');
 
 function costruisciNav(profiloAttivo) {
   const vociVisibili = Object.entries(VISTE)
@@ -80,7 +81,24 @@ async function mostraVista(chiave) {
   nav.querySelectorAll('.nav-btn, .nav-btn-impostazioni').forEach((btn) => {
     btn.classList.toggle('attivo', btn.dataset.vista === chiave);
   });
+  chiudiMenuMobile();
   await VISTE[chiave].render(contenuto);
+}
+
+// Su schermi piccoli la nav diventa un menu a comparsa (hamburger, css/style.css) invece di
+// restare sempre fissa in cima: va chiusa esplicitamente ad ogni navigazione, altrimenti
+// resterebbe aperta sopra il contenuto della vista appena caricata. Su desktop questa funzione
+// non ha alcun effetto visibile (la classe 'nav-aperta' non è usata sopra i 720px).
+function chiudiMenuMobile() {
+  nav.classList.remove('nav-aperta');
+  if (btnHamburger) btnHamburger.setAttribute('aria-expanded', 'false');
+}
+
+if (btnHamburger) {
+  btnHamburger.addEventListener('click', () => {
+    const apertaOra = nav.classList.toggle('nav-aperta');
+    btnHamburger.setAttribute('aria-expanded', String(apertaOra));
+  });
 }
 
 // Esposto globalmente per permettere ai pulsanti-azione di altre viste (es. "Registra Entrata"

@@ -76,6 +76,10 @@ h1, h2, h3, h4 {
   color: var(--colore-testo);
 }
 
+/* Hamburger: nascosto su desktop, mostrato solo sotto i 720px (vedi blocco mobile in fondo al
+   file) — su desktop la nav resta quella a pillole, sempre visibile, come prima. */
+.btn-hamburger { display: none; }
+
 .sottotitolo {
   color: var(--colore-testo-debole);
   font-size: 0.85rem;
@@ -856,67 +860,125 @@ button:hover { border-color: var(--colore-testo-debole); background: var(--color
    sotto questa soglia: la visualizzazione desktop resta invariata.
    ============================================================
 
-   Problemi risolti qui, in ordine di impatto:
-   1. La barra di tab secondaria (.barra-tab — es. le 7 tab di Impostazioni, o Fondi/Budget
-      dentro Conti) non aveva overflow né wrap: su un telefono le pillole restavano tutte su
-      una riga, allargando l'intera pagina e causando scroll orizzontale su TUTTA l'app, non
-      solo sulla barra — probabilmente il problema più visibile.
-   2. Il gruppo Profilo/Impostazioni/Cloud Sync in nav (.gruppo-icone-nav) era ancorato a destra
-      con margin-left:auto dentro una nav a scroll orizzontale: se le voci di nav non ci
-      stavano, quelle icone finivano fuori schermo e per raggiungerle bisognava scorrere "alla
-      cieca" — ora la nav va semplicemente a capo, tutto resta sempre visibile e raggiungibile.
-   3. Nessun campo di testo garantiva un font-size minimo di 16px: sotto quella soglia Safari
-      iOS ingrandisce automaticamente la pagina ad ogni tap su un campo, un comportamento molto
-      fastidioso e spesso scambiato per un bug dell'app.
-   4. Le tabelle non avevano modo di scorrere in orizzontale: con più colonne (e i campi numerici
-      da 100-110px usati in alcune di esse, es. Distribuisci/Ridistribuisci/Prospetti) finivano
-      per allargare la pagina invece di restare contenute.
-   5. Padding orizzontali pensati per desktop (fino a 36+24px cumulati tra intestazione, nav e
-      pannelli) lasciavano pochissima larghezza utile su un telefono da 360-390px.
-   6. Bottoni icona (32-38px) sotto la soglia minima di tocco comoda consigliata da iOS/Android
-      (~44px).
+   Revisione v0.29, dopo il primo giro di correzioni (v0.28) e il riscontro dell'utente:
+   1. NAVIGAZIONE → menu ad hamburger. La nav a capo introdotta in v0.28 restava comunque
+      sempre fissa in cima, occupando spazio permanente e spingendo giù il contenuto. Ora resta
+      chiusa di default e si apre solo su richiesta (icona hamburger nell'intestazione),
+      richiudendosi da sola ad ogni navigazione.
+   2. TABELLE troppo condensate / righe altissime (Movimenti, Conti → Fondi) → causa reale:
+      il fix v0.28 rendeva la tabella scorrevole ma non impediva alle celle di andare a capo su
+      più righe (nessun white-space:nowrap): il layout automatico delle tabelle, potendo
+      scegliere, preferisce SEMPRE mandare il testo a capo per stare nella larghezza
+      disponibile piuttosto che sforare — risultato: colonne strette, testo spezzato su più
+      righe, pulsanti azione (5-6 icone) impilati su 2-3 righe → celle bassissime di contenuto
+      ma righe altissime nel complesso. Ora le celle non vanno più a capo: la tabella assume la
+      sua larghezza naturale e scorre in orizzontale (già impostato in v0.28), quindi ogni riga
+      resta alta quanto una singola riga di testo.
+   3. TESTO leggermente più piccolo in tutto il sito → un solo cambio alla dimensione font della
+      radice (tutte le unità rem si riscalano di conseguenza; gli spazi/margini dell'app, in
+      px fissi, non cambiano: cambia la tipografia, non i vuoti tra gli elementi).
+   4. Tabelle ulteriormente più compatte in verticale: meno padding per riga.
    ============================================================ */
 @media (max-width: 720px) {
+
+  /* Vedi punto 3: -6% circa su tutta la tipografia rem-based dell'app (16px → 15px). */
+  html { font-size: 93.75%; }
 
   .intestazione {
     padding: 14px var(--spazio-md);
     gap: 6px;
+    justify-content: space-between;
   }
   .intestazione h1 { font-size: 1.1rem; }
 
-  /* Vedi punto 2: la nav va a capo invece di nascondere voci fuori schermo. */
-  .nav-principale {
-    padding: var(--spazio-xs) var(--spazio-md);
-    overflow-x: visible;
-    flex-wrap: wrap;
+  /* Vedi punto 1: pulsante hamburger, invisibile sopra i 720px (v. regola base più sotto). */
+  .btn-hamburger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    border: 1px solid var(--colore-bordo-forte);
+    border-radius: var(--raggio-sm);
+    color: var(--colore-testo);
+    font-size: 1.05rem;
+    flex-shrink: 0;
   }
-  .nav-btn { padding: 8px 14px; font-size: 0.88rem; }
-  .gruppo-icone-nav { margin-left: 0; }
+  .btn-hamburger:hover { background: var(--colore-sfondo-soft); }
 
-  /* Vedi punto 5. */
+  /* La nav resta chiusa (altezza zero, non intercetta click/tab) finché non si apre: niente
+     più spazio fisso permanente in cima alla pagina. */
+  .nav-principale {
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    padding: var(--spazio-sm) var(--spazio-md);
+    border-bottom: 1px solid var(--colore-bordo);
+  }
+  .nav-principale.nav-aperta { display: flex; }
+
+  .nav-btn {
+    width: 100%;
+    text-align: left;
+    border-radius: var(--raggio-sm);
+    padding: 12px 14px;
+  }
+  .nav-btn.attivo { box-shadow: none; } /* niente ombra "sollevata" su una pillola a piena larghezza */
+
+  /* Il gruppo Profilo/Impostazioni/Cloud Sync, essendo un div figlio diretto di .nav-principale
+     ora in colonna, diventa naturalmente la sua riga finale nel menu aperto — resta una fila
+     orizzontale di icone, solo non più ancorata a destra (non serve più: non c'è più nulla da
+     cui "scappare" in una nav verticale). */
+  .gruppo-icone-nav {
+    margin-left: 0;
+    margin-top: var(--spazio-sm);
+    padding-top: var(--spazio-sm);
+    border-top: 1px dashed var(--colore-bordo);
+  }
+
+  /* Vedi punto 3 (nota architetturale): spazi/padding restano invariati, cambia solo il testo. */
   .contenuto { padding: var(--spazio-md) var(--spazio-sm) 40px; }
   .pannello { padding: var(--spazio-md); margin-bottom: var(--spazio-md); }
 
-  /* Vedi punto 1. */
   .barra-tab { flex-wrap: wrap; }
 
-  /* Vedi punto 6: target di tocco più comodi, senza cambiare le dimensioni su desktop. */
+  /* Target di tocco più comodi (~40-42px, soglia consigliata iOS/Android), senza cambiare le
+     dimensioni su desktop. */
   .nav-btn-impostazioni { width: 42px; height: 42px; }
   .btn-icona { width: 40px; height: 40px; font-size: 1.05rem; }
   .btn-stella-azione { width: 40px; height: 40px; }
 
-  /* Vedi punto 3. */
+  /* Sotto i 16px Safari iOS ingrandisce automaticamente la pagina ad ogni tap su un campo:
+     valore assoluto in px, non influenzato dal riscalamento della radice qui sopra. */
   input, select, textarea { font-size: 16px; }
 
-  /* Vedi punto 4: la tabella resta leggibile alla sua larghezza naturale e scorre in
-     orizzontale solo quando serve, invece di forzare colonne illeggibili o allargare la
-     pagina intera. */
+  /* Vedi punto 2: la tabella scorre in orizzontale (v0.28) E le celle non vanno più a capo, così
+     è davvero la larghezza a scorrere e non il testo ad accartocciarsi su più righe. */
   .tabella, .tabella-integrita {
     display: block;
     max-width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
+  .tabella th, .tabella td,
+  .tabella-integrita th, .tabella-integrita td {
+    white-space: nowrap;
+    padding: 7px 10px; /* vedi punto 4: meno alto di prima (10px 8px), un filo più largo in
+                           orizzontale per compensare la perdita del testo a capo */
+  }
+  /* Eccezione: la colonna Descrizione (Movimenti) e simili contengono testo libero
+     potenzialmente lungo — utile poterlo comunque leggere su più righe quando la tabella è già
+     scrollabile, invece di produrre una singola colonna larghissima. */
+  .tabella td.colonna-descrizione { white-space: normal; min-width: 200px; }
+
+  /* Le azioni per riga (icone) restano su una sola riga invece di impilarsi su 2-3 righe: è
+     proprio questo impilamento, dentro una colonna forzata stretta, la causa principale delle
+     "righe altissime" segnalate in Conti → Fondi. */
+  .tabella td .azioni-riga, .tabella-integrita td .azioni-riga { flex-wrap: nowrap; }
 
   /* Il menu "Altre azioni" (Dashboard) è ancorato a destra della sua Azione: su schermi molto
      stretti, con min-width:230px, poteva sconfinare oltre il bordo sinistro dello schermo. */
@@ -926,8 +988,4 @@ button:hover { border-color: var(--colore-testo-debole); background: var(--color
      telefoni più piccoli (~320-360px). */
   .dialog-overlay { padding: var(--spazio-sm); }
   .dialog-riquadro { padding: var(--spazio-md); }
-
-  /* I form pensati per desktop con max-width elevati (640/720/760px) restano comunque
-     limitati alla larghezza reale dello schermo grazie a max-width — nessuna regola necessaria
-     qui, lo standard box-sizing:border-box già applicato a tutto (riga 45) basta da solo. */
 }
