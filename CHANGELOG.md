@@ -1,5 +1,27 @@
 # Changelog — FinSteady
 
+## v0.36-001 — Selettore Prospetti tondo, bug reale di contrasto su hover
+
+### Modificato
+- **Selettore dei Prospetti da confrontare, ora tondo**: il checkbox nativo (quadrato, aspetto
+  variabile da browser a browser) è stato ridisegnato come cerchio via CSS, coerente col resto
+  dei componenti circolari dell'app e con l'accento viola usato per indicare una selezione
+  (`.checkbox-confronto` in `css/style.css`).
+- **Trovato il vero bug dietro il testo scuro su sfondo viola nei bottoni di menu/navigazione**
+  (non un "effetto collaterale" generico dell'hover, ma un preciso bug di specificità CSS):
+  - `.tab-btn-attiva` (le tab attive: Manuale/Equa/Proporzionale in Registra Entrata, le 7 tab
+    di Impostazioni, Fondi/Budget dentro Conti...) è una singola classe, con specificità
+    **inferiore** a `.tab-btn:hover` (classe + pseudo-classe) — al passaggio del mouse, o con
+    l'hover che resta "incollato" dopo un tap su mobile (comportamento comune su iOS/Android),
+    il testo scuro della regola hover generica vinceva SEMPRE, anche sulla tab attiva.
+  - `.nav-btn.attivo` e `.nav-btn-impostazioni.attivo` avevano la STESSA specificità delle
+    rispettive regole `:hover` generiche: un pareggio, risolto correttamente dall'ordine delle
+    regole nella maggior parte dei casi, ma non garantito su ogni motore di rendering — reso
+    esplicito per certezza.
+  - In tutti e tre i casi, il colore bianco è ora ridichiarato esplicitamente nella variante
+    `:hover` della classe attiva, senza fare affidamento sulla specificità o sull'ordine delle
+    regole per vincere.
+
 ## v0.35-001 — Checkbox e tag/lucchetto in angolo, padding uniforme
 
 ### Modificato

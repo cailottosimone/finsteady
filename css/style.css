@@ -115,7 +115,13 @@ h1, h2, h3, h4 {
   box-shadow: 0 2px 10px rgba(91, 95, 239, 0.35);
   font-weight: 600;
 }
-.nav-btn.attivo:hover { background: linear-gradient(135deg, #7B7FF5 0%, #5B5FEF 45%, #4C46E0 100%); }
+/* .nav-btn.attivo (2 classi) e .nav-btn:hover (1 classe + 1 pseudo-classe) hanno la STESSA
+   specificità: senza questa regola, passando il mouse (o con l'hover che resta "incollato"
+   dopo un tap su mobile, comportamento comune su iOS/Android) sulla voce di nav già attiva, il
+   testo poteva restare/tornare scuro sullo sfondo viola invece di restare bianco (segnalato
+   dall'utente). Qui il colore bianco è ridichiarato esplicitamente, senza fare affidamento
+   sull'ordine delle regole per risolvere la parità di specificità. */
+.nav-btn.attivo:hover { color: #FFFFFF; background: linear-gradient(135deg, #7B7FF5 0%, #5B5FEF 45%, #4C46E0 100%); }
 
 /* Le icone Profilo/Impostazioni stanno in un contenitore di gruppo con margin-left:auto: solo
    il GRUPPO viene spinto in fondo alla nav, le icone al suo interno restano semplicemente
@@ -149,6 +155,10 @@ h1, h2, h3, h4 {
 #nav-btn-cloud-sync { overflow: visible; }
 .nav-btn-impostazioni:hover { color: var(--colore-testo); background: var(--colore-sfondo-soft); }
 .nav-btn-impostazioni.attivo { color: #FFFFFF; background: linear-gradient(135deg, #7B7FF5 0%, #5B5FEF 45%, #4C46E0 100%); }
+/* Stesso bug di specificità di .nav-btn qui sopra: senza questa regola l'icona attiva
+   (Profilo/Impostazioni) poteva mostrare l'icona scura invece che bianca al passaggio del
+   mouse o con l'hover "incollato" dopo un tap su mobile. */
+.nav-btn-impostazioni.attivo:hover { color: #FFFFFF; background: linear-gradient(135deg, #7B7FF5 0%, #5B5FEF 45%, #4C46E0 100%); }
 
 /* ---------- Icona di stato Cloud Sync (in nav, separata da Profilo/Impostazioni) ---------- */
 .nav-btn-impostazioni.sync-attivo { color: var(--colore-operativita); }
@@ -203,7 +213,14 @@ h1, h2, h3, h4 {
   box-shadow: 0 2px 10px rgba(91, 95, 239, 0.35);
   font-weight: 600;
 }
-.tab-btn-attiva:hover { background: linear-gradient(135deg, #7B7FF5 0%, #5B5FEF 45%, #4C46E0 100%); }
+/* Bug reale di specificità (non un semplice effetto collaterale dell'hover): .tab-btn-attiva è
+   UNA sola classe (specificità inferiore) mentre .tab-btn:hover qui sopra è classe+pseudo-classe
+   (specificità superiore) — al passaggio del mouse, o con l'hover "incollato" dopo un tap su
+   mobile, il testo scuro di .tab-btn:hover vinceva SEMPRE sul bianco della tab attiva, restando
+   scuro sullo sfondo viola (segnalato dall'utente: "Manuale/Equa/Proporzionale", le tab di
+   Impostazioni, Fondi/Budget dentro Conti...). Qui il bianco è ridichiarato con specificità
+   sufficiente a vincere sempre. */
+.tab-btn-attiva:hover { color: #FFFFFF; background: linear-gradient(135deg, #7B7FF5 0%, #5B5FEF 45%, #4C46E0 100%); }
 
 .pannello-tab-contenuto .pannello:first-child { margin-top: 0; }
 .sotto-sezione { margin-top: var(--spazio-lg); }
@@ -356,6 +373,46 @@ h1, h2, h3, h4 {
 }
 .badge-ok { background: var(--colore-ok-soft); color: var(--colore-ok); }
 .badge-errore { background: var(--colore-avviso-soft); color: var(--colore-avviso); display: block; }
+
+/* ---------- Selettore Prospetti da confrontare (checkbox tonda) ---------- */
+/* Il checkbox nativo del browser è quadrato, di aspetto molto variabile da browser a browser:
+   sostituito con un cerchio disegnato via CSS (appearance:none + stile manuale), coerente con
+   il resto dei componenti circolari dell'app (icone di navigazione, pallini dell'equazione) e
+   con l'accento viola usato ovunque per indicare una selezione/stato attivo. */
+.checkbox-confronto {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  border-radius: 50%;
+  border: 2px solid var(--colore-bordo-forte);
+  background: var(--colore-sfondo);
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.checkbox-confronto:hover { border-color: var(--colore-operativita); }
+.checkbox-confronto:checked {
+  background: var(--colore-operativita);
+  border-color: var(--colore-operativita);
+}
+.checkbox-confronto:checked::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 9px;
+  border: solid #FFFFFF;
+  border-width: 0 2px 2px 0;
+  transform: translate(-50%, -60%) rotate(45deg);
+}
+.checkbox-confronto:focus-visible {
+  outline: 2px solid var(--colore-operativita);
+  outline-offset: 2px;
+}
 
 .th-ordinabile {
   cursor: pointer;
