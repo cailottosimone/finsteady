@@ -4,11 +4,15 @@ Il Sync Cloud è opzionale: finché non completi questa procedura, `js/sync/conf
 vuoto e l'app funziona esattamente come prima, solo in locale (IndexedDB). Nessuna funzionalità
 esistente cambia.
 
-Modello volutamente semplice: due pulsanti nella tab **Sync** di Impostazioni, **Carica sul
-Cloud** e **Scarica dal Cloud**. Nessuna sincronizzazione automatica in background, nessuna
-risoluzione di conflitti: premi un pulsante, l'operazione si completa, fine — non ti chiede
-altro dopo. Carica sovrascrive il Cloud con i dati di questo dispositivo; Scarica sostituisce
-interamente i dati di questo dispositivo con quelli del Cloud.
+Modello a istantanea completa, come le altre app dell'utente: nessuna risoluzione di conflitti
+per singolo record, chi vince lo decide solo l'azione (Carica = vince il locale, Scarica = vince
+il Cloud), mai una scelta da fare dopo. È **automatico**: ogni modifica locale carica da sola sul
+Cloud dopo qualche secondo, e all'apertura dell'app (se già autenticato) scarica da sola l'ultimo
+caricamento fatto altrove, una volta per sessione. I due pulsanti nella tab **Sync** di
+Impostazioni, **Carica sul Cloud** e **Scarica dal Cloud**, restano comunque sempre disponibili
+per farlo a mano in qualunque momento, con conferma esplicita prima di procedere. Carica
+sovrascrive il Cloud con i dati di questo dispositivo; Scarica sostituisce interamente i dati di
+questo dispositivo con quelli del Cloud.
 
 ## 1. Crea il progetto Supabase
 
@@ -92,14 +96,18 @@ collegato, per verificarlo a colpo d'occhio; lo stesso indicatore compare anche 
 Passaggi per collegare un secondo dispositivo (es. un MacBook diverso):
 
 1. **Sul dispositivo che ha già i tuoi dati**: completa il setup, poi nella tab Sync premi
-   **"Carica sul Cloud"**.
+   **"Carica sul Cloud"** (la prima volta conviene farlo a mano, per non aspettare i pochi
+   secondi del caricamento automatico).
 2. **Sul nuovo dispositivo**: copia lo stesso repository, compila `js/sync/config.js` con lo
    stesso URL/chiave, assicurati che il Profilo attivo abbia lo stesso nome del primo
    dispositivo (rinominalo se serve, dalla vista Profili), accedi con lo stesso account nella tab
-   Sync, poi premi **"Scarica dal Cloud"**.
+   Sync: appena autenticato scarica da solo l'ultimo caricamento fatto sul primo dispositivo (una
+   volta per sessione) — oppure premi subito **"Scarica dal Cloud"** per farlo a mano senza
+   aspettare.
 
-Da quel momento in poi, ogni volta che vuoi allineare i due dispositivi, ripeti: Carica da dove
-hai appena lavorato, Scarica sull'altro. Nessun automatismo: sei sempre tu a decidere quando.
+Da quel momento in poi, i due dispositivi restano allineati da soli: ogni modifica su uno carica
+automaticamente sul Cloud dopo qualche secondo, e il prossimo apri-app sull'altro scarica da solo
+l'ultimo stato. I due pulsanti restano lì per un allineamento immediato, a mano, quando vuoi tu.
 
 ## Cosa NON viene sincronizzato
 

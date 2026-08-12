@@ -1,5 +1,38 @@
 # Changelog — Financial Planner
 
+## v0.28-002 — Ripristinata la sincronizzazione automatica (rimossa per errore in v0.28-001)
+
+La v0.28-001 aveva tolto anche il caricamento/scaricamento automatico insieme alla vecchia
+sincronizzazione per singolo record — non era stato richiesto: l'automatico era stato chiesto
+esplicitamente fin dal primo piano ("Automatico in background") e le app di riferimento
+dell'utente (Vacation Planner, Preventivi 3D) lo hanno entrambe insieme ai pulsanti manuali.
+Corretto qui, mantenendo il modello a istantanea completa (nessun ritorno alla coda/conflitti
+per singolo record della v0.27).
+
+### Aggiunto
+- **Caricamento automatico**: `storage.js` espone di nuovo un hook `onScrittura` (molto più
+  semplice della versione v0.27 — nessuna opzione, nessuna coda), chiamato dopo ogni scrittura
+  riuscita (`dbAdd`/`dbPut`/`dbDelete`). Il motore di Sync vi si iscrive e, a ogni modifica,
+  programma un "Carica sul Cloud" automatico con 4 secondi di attesa (per non spammare la rete a
+  ogni singolo tasto premuto), riazzerando l'attesa se arriva un'altra modifica nel frattempo.
+- **Scaricamento automatico**: una sola volta per sessione, quando l'utente risulta autenticato
+  (login o riapertura app con sessione già valida), il motore di Sync scarica da solo l'ultimo
+  caricamento fatto altrove — così un dispositivo si allinea sempre da sé all'apertura, senza
+  dover premere "Scarica" a mano ogni volta.
+- Durante uno scaricamento (automatico o manuale) il caricamento automatico resta sospeso, per
+  non ricaricare subito sul Cloud dati appena sostituiti da uno scaricamento.
+
+### Corretto
+- **I pulsanti "Carica"/"Scarica"/"Disconnetti" non si disabilitavano più durante un'operazione**:
+  la vecchia disabilitazione era imperativa (`btn.disabled = true` sul pulsante cliccato), ma lo
+  stesso istante in cui l'operazione parte lo stato reattivo si aggiorna e ridisegna l'intera
+  sezione — il pulsante con `.disabled` impostato a mano viene sostituito da uno nuovo, senza
+  quello stato. Corretto rendendo `disabled` parte del template, pilotato direttamente da
+  `stato.inCorso` a ogni ridisegno: ora Carica, Scarica e Disconnetti si disabilitano insieme
+  correttamente, sia per un'azione manuale sia per una automatica.
+- Testo descrittivo della tab Sync aggiornato per riflettere il comportamento automatico
+  (prima diceva ancora, erroneamente, "nessuna sincronizzazione automatica").
+
 ## v0.28-001 — Sync Cloud riprogettato: "Carica"/"Scarica" a istantanea completa
 
 Sostituisce il motore a sincronizzazione automatica per singolo record (v0.27-001 → v0.27-004),

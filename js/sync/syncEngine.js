@@ -1,36 +1,44 @@
-// Motore di Sync Cloud — Fase 6, versione semplificata.
+// Motore di Sync Cloud — Fase 6.
 //
-// Modello volutamente semplice, "a istantanea completa", esattamente come le altre app
-// dell'utente (Vacation Planner, Preventivi 3D): DUE azioni esplicite, senza sincronizzazione
-// automatica in background, senza rilevamento conflitti, senza scelte successive.
+// Modello "a istantanea completa", come le altre app dell'utente (Vacation Planner, Preventivi
+// 3D): Carica sovrascrive il Cloud con i dati locali, Scarica sovrascrive i dati locali con
+// quelli del Cloud. Nessun rilevamento conflitti per singolo record, nessuna scelta da fare
+// dopo — chi vince lo decide solo l'azione scelta (Carica = locale, Scarica = Cloud).
 //
-// - Carica sul Cloud: esporta l'intero database del Profilo attivo (stesso identico formato del
-//   Backup locale, domain/backup.js → esportaTutto()) e lo salva in un'UNICA riga su Supabase,
-//   sovrascrivendo quella precedente per questo account+Profilo. Fine, nessun'altra domanda.
-// - Scarica dal Cloud: legge quella riga e la applica in locale con domain/backup.js →
-//   importaTutto() — la stessa funzione già usata per importare un file di Backup locale, quindi
-//   sostituisce interamente i dati locali. Fine, nessun'altra domanda.
+// Automatico, come richiesto esplicitamente: ogni modifica locale programma un caricamento
+// automatico (con qualche secondo di attesa, per non spammare la rete a ogni singolo tasto);
+// all'apertura dell'app (o al login), se già autenticato, scarica automaticamente una volta sola
+// per sessione — così si parte sempre allineati all'ultimo caricamento fatto da un altro
+// dispositivo. I due pulsanti "Carica sul Cloud"/"Scarica dal Cloud" restano comunque disponibili
+// per farlo a mano in qualunque momento, con conferma esplicita.
 //
-// Chi vince in caso di dati diversi tra locale e Cloud lo decide solo l'azione scelta
-// dall'utente (Carica = vince il locale, Scarica = vince il Cloud): nessun confronto automatico
-// di timestamp, nessuna fusione parziale, nessuna coda. Più semplice, più prevedibile, più
-// facile da verificare che abbia funzionato.
+// Unico rischio da conoscere, inevitabile con un modello "vince tutto o niente" senza
+// rilevamento conflitti: se lavori offline su un dispositivo e poi apri l'app su un altro
+// dispositivo prima di aver potuto caricare dal primo, lo scaricamento automatico del secondo
+// dispositivo non vede quelle modifiche (non sono ancora sul Cloud). Per uso personale su pochi
+// dispositivi, quasi sempre online, è un rischio pratico molto basso.
 //
 // Isolamento tra Profili locali: l'app supporta più Profili completamente separati (ciascuno
 // con un proprio database IndexedDB fisico, vedi js/profili.js), ma un accesso Supabase è
-// legato al browser, non al Profilo. La riga su Supabase è quindi identificata da
-// (account, nome del Profilo attivo normalizzato) — non l'id del Profilo, che è generato in
-// modo indipendente su ogni dispositivo e quindi diverso anche per lo "stesso" Profilo su
-// macchine diverse. Se rinomini un Profilo già collegato al Sync, il nuovo nome è una
-// partizione diversa: rinominalo allo stesso modo su tutti i dispositivi.
+// legato al browser, non al Profilo. La riga su Supabase è identificata da (account, nome del
+// Profilo attivo normalizzato) — non l'id del Profilo, generato in modo indipendente su ogni
+// dispositivo. Se rinomini un Profilo già collegato al Sync, rinominalo allo stesso modo su
+// tutti i dispositivi.
 
+import { onScrittura } from '../storage.js';
 import { supabase, SYNC_CONFIGURATO } from './supabaseClient.js';
 import { utenteCorrente, onCambioAuth } from './auth.js';
 import { ottieniProfiloAttivo } from '../profili.js';
 import { esportaTutto, importaTutto } from '../domain/backup.js';
 
+const RITARDO_AUTO_CARICA_MS = 4000;
+
 let profiloLocaleId = null;
 let motoreAvviato = false;
+let operazioneInCorso = false;
+let sospendiAutoCarica = false;
+let timerAutoCarica = null;
+let scaricamentoAutomaticoFatto = false;
 
 let stato = {
   configurato: SYNC_CONFIGURATO,
@@ -65,15 +73,95 @@ function normalizzaChiaveProfilo(nome) {
   return (nome || '').trim().toLowerCase();
 }
 
-function richiediUtenteEProfilo() {
+// Esegue fn con un mutex semplice: se un'operazione (automatica o manuale) è già in corso, le
+// chiamate successive vengono ignorate silenziosamente invece di accodarsi o sovrapporsi — è il
+// motivo per cui i pulsanti Carica/Scarica restano disabilitati mentre stato.inCorso è vero (li
+// gestisce la UI, vedi viewImpostazioniSync.js), e per cui un caricamento automatico non parte
+// mai a metà di uno scaricamento (o viceversa).
+async function eseguiOperazione(fn) {
+  if (operazioneInCorso) return;
+  operazioneInCorso = true;
+  aggiornaStato({ inCorso: true, ultimoErrore: null });
+  try {
+    await fn();
+  } catch (err) {
+    aggiornaStato({ ultimoErrore: err.message });
+    throw err;
+  } finally {
+    operazioneInCorso = false;
+    aggiornaStato({ inCorso: false });
+  }
+}
+
+async function eseguiCaricamento() {
+  const utente = await utenteCorrente();
+  if (!utente) throw new Error('Devi accedere prima di caricare i dati sul Cloud.');
+  const pacchetto = await esportaTutto();
+  const adesso = new Date().toISOString();
+  const { error } = await supabase
+    .from('cloud_snapshot')
+    .upsert(
+      { user_id: utente.id, profilo_locale_id: profiloLocaleId, payload: pacchetto, aggiornato_il: adesso },
+      { onConflict: 'user_id,profilo_locale_id' }
+    );
+  if (error) throw error;
+  aggiornaStato({ ultimoCaricamento: adesso });
+}
+
+async function eseguiScaricamento() {
+  const utente = await utenteCorrente();
+  if (!utente) throw new Error('Devi accedere prima di scaricare i dati dal Cloud.');
+  const { data, error } = await supabase
+    .from('cloud_snapshot')
+    .select('payload, aggiornato_il')
+    .eq('profilo_locale_id', profiloLocaleId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) {
+    const profilo = await ottieniProfiloAttivo();
+    throw new Error(`Nessun dato sul Cloud per il Profilo "${profilo.nome}". Usa prima "Carica sul Cloud" dal dispositivo che ha già i tuoi dati.`);
+  }
+  sospendiAutoCarica = true;
+  if (timerAutoCarica) { clearTimeout(timerAutoCarica); timerAutoCarica = null; }
+  try {
+    await importaTutto(data.payload);
+  } finally {
+    sospendiAutoCarica = false;
+  }
+  aggiornaStato({ ultimoScaricamento: data.aggiornato_il });
+  return data.aggiornato_il;
+}
+
+// "Carica sul Cloud" (pulsante, o automatico dopo una modifica locale): sovrascrive la riga del
+// Cloud per questo account+Profilo con l'intero database locale. Nessuna domanda successiva.
+export async function caricaSulCloud() {
   if (!SYNC_CONFIGURATO) throw new Error('Sync Cloud non configurato: vedi SETUP-SUPABASE.md.');
   if (!profiloLocaleId) throw new Error('Profilo locale non ancora pronto: riprova tra un istante.');
+  return eseguiOperazione(eseguiCaricamento);
+}
+
+// "Scarica dal Cloud" (pulsante, o automatico all'apertura dell'app): sostituisce interamente i
+// dati locali con quelli del Cloud per questo account+Profilo. Nessuna domanda successiva — il
+// chiamante (viewImpostazioniSync.js) mostra la conferma PRIMA di invocarla, per l'azione
+// manuale; quella automatica all'avvio non la mostra (vedi nota in cima al file).
+export async function scaricaDalCloud() {
+  if (!SYNC_CONFIGURATO) throw new Error('Sync Cloud non configurato: vedi SETUP-SUPABASE.md.');
+  if (!profiloLocaleId) throw new Error('Profilo locale non ancora pronto: riprova tra un istante.');
+  return eseguiOperazione(eseguiScaricamento);
+}
+
+function programmaCaricamentoAutomatico() {
+  if (sospendiAutoCarica || !stato.autenticato) return;
+  if (timerAutoCarica) clearTimeout(timerAutoCarica);
+  timerAutoCarica = setTimeout(() => {
+    timerAutoCarica = null;
+    caricaSulCloud().catch((err) => console.error('[sync] caricamento automatico fallito:', err.message));
+  }, RITARDO_AUTO_CARICA_MS);
 }
 
 // Chiamata una sola volta all'avvio dell'app (js/app.js), dopo l'inizializzazione dei Profili.
 // Se il Sync non è configurato (js/sync/config.js vuoto) non fa nulla: l'app resta puramente
-// locale, invariata. Non avvia alcuna sincronizzazione automatica: si limita a tenere lo stato
-// (autenticato o no) aggiornato per la tab Sync e per il badge in Dashboard.
+// locale, invariata.
 export async function avviaMotoreSync() {
   if (!SYNC_CONFIGURATO || motoreAvviato) return;
   motoreAvviato = true;
@@ -81,67 +169,15 @@ export async function avviaMotoreSync() {
   const profilo = await ottieniProfiloAttivo();
   profiloLocaleId = normalizzaChiaveProfilo(profilo.nome);
 
-  onCambioAuth((utente) => {
+  onScrittura(() => programmaCaricamentoAutomatico());
+
+  onCambioAuth(async (utente) => {
     aggiornaStato({ autenticato: Boolean(utente), email: utente?.email || null });
-  });
-}
-
-// "Carica sul Cloud": sovrascrive la riga del Cloud per questo account+Profilo con l'intero
-// database locale. Nessuna domanda successiva: l'utente ha scelto, il locale vince.
-export async function caricaSulCloud() {
-  richiediUtenteEProfilo();
-  const utente = await utenteCorrente();
-  if (!utente) throw new Error('Devi accedere prima di caricare i dati sul Cloud.');
-
-  aggiornaStato({ inCorso: true, ultimoErrore: null });
-  try {
-    const pacchetto = await esportaTutto();
-    const adesso = new Date().toISOString();
-    const { error } = await supabase
-      .from('cloud_snapshot')
-      .upsert(
-        { user_id: utente.id, profilo_locale_id: profiloLocaleId, payload: pacchetto, aggiornato_il: adesso },
-        { onConflict: 'user_id,profilo_locale_id' }
-      );
-    if (error) throw error;
-    aggiornaStato({ ultimoCaricamento: adesso });
-  } catch (err) {
-    aggiornaStato({ ultimoErrore: err.message });
-    throw err;
-  } finally {
-    aggiornaStato({ inCorso: false });
-  }
-}
-
-// "Scarica dal Cloud": legge la riga del Cloud per questo account+Profilo e sostituisce
-// interamente i dati locali (stessa funzione usata per importare un Backup locale). Nessuna
-// domanda successiva: l'utente ha scelto, il Cloud vince. Il chiamante (viewImpostazioniSync.js)
-// mostra la conferma PRIMA di invocare questa funzione, sullo stesso modello già usato per
-// l'import di un Backup locale.
-export async function scaricaDalCloud() {
-  richiediUtenteEProfilo();
-  const utente = await utenteCorrente();
-  if (!utente) throw new Error('Devi accedere prima di scaricare i dati dal Cloud.');
-
-  aggiornaStato({ inCorso: true, ultimoErrore: null });
-  try {
-    const { data, error } = await supabase
-      .from('cloud_snapshot')
-      .select('payload, aggiornato_il')
-      .eq('profilo_locale_id', profiloLocaleId)
-      .maybeSingle();
-    if (error) throw error;
-    if (!data) {
-      const profilo = await ottieniProfiloAttivo();
-      throw new Error(`Nessun dato sul Cloud per il Profilo "${profilo.nome}". Usa prima "Carica sul Cloud" dal dispositivo che ha già i tuoi dati.`);
+    // Una sola volta per sessione (non ad ogni evento di auth, es. refresh del token): allinea
+    // questo dispositivo all'ultimo caricamento fatto altrove appena si apre l'app da autenticati.
+    if (utente && !scaricamentoAutomaticoFatto) {
+      scaricamentoAutomaticoFatto = true;
+      scaricaDalCloud().catch((err) => console.error('[sync] scaricamento automatico fallito:', err.message));
     }
-    await importaTutto(data.payload);
-    aggiornaStato({ ultimoScaricamento: data.aggiornato_il });
-    return data.aggiornato_il;
-  } catch (err) {
-    aggiornaStato({ ultimoErrore: err.message });
-    throw err;
-  } finally {
-    aggiornaStato({ inCorso: false });
-  }
+  });
 }
