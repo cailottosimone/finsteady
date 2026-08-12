@@ -1,0 +1,109 @@
+/* ============================================================
+   FinSteady — Design Tokens (v0.1 redesign)
+   ============================================================
+   Ridisegno completo dell'interfaccia grafica (nessun cambiamento funzionale).
+   Riferimento estetico: fintech premium, minimale, ispirato a Trade Republic / Revolut —
+   molto neutro, un solo accento, gerarchia tipografica forte sui numeri, superfici piatte
+   con separazione tramite contrasto di fondo invece di ombre pesanti.
+
+   NOTA SUL SIGNIFICATO DEI COLORI (importante, letta prima di modificare qualsiasi valore):
+   Il vecchio sistema usava --colore-patrimonio (verde) per "tutto ciò che è Fondo" e
+   --colore-operativita (indaco) per "tutto ciò che è Budget" — una distinzione per
+   CATEGORIA. Confrontandoci con l'utente, questa distinzione categoriale non ha più senso
+   (non aiuta a leggere i dati, aggiunge solo due colori arbitrari). La separazione concettuale
+   Patrimonio/Operatività, richiesta dal FDD, resta — ma ora si esprime con layout, etichette e
+   icone, non con due tinte diverse per la stessa interazione.
+   I due nomi restano come VARIABILI (per compatibilità con le viste non riscritte in questo
+   giro), ma il loro ruolo cambia:
+     --colore-operativita → l'UNICO accento di marca (indaco), usato per interattività,
+                             stati attivi, azioni primarie — ovunque nell'app.
+     --colore-patrimonio  → colore semantico "positivo/crescita" (già usato così in alcuni
+                             punti del codice esistente, es. importi di segno positivo nei
+                             grafici di Prospetti), es. saldo positivo, obiettivo raggiunto.
+     --colore-avviso      → colore semantico "negativo/attenzione" (invariato nel ruolo).
+   ============================================================ */
+
+:root {
+  /* ---------- Neutri: superficie a due livelli invece di ombre pesanti ---------- */
+  --colore-pagina: #F4F5F7;          /* sfondo di tutta l'app (canvas) */
+  --colore-sfondo: #FFFFFF;          /* superficie elevata: pannelli, sidebar, modali */
+  --colore-sfondo-soft: #F0F1F4;     /* superficie annidata/recessa dentro una superficie elevata */
+  --colore-sfondo-inversa: #14151A;  /* fondo scuro puntuale (tooltip, badge su chip attivo) */
+
+  --colore-testo: #14151A;
+  --colore-testo-soft: #676B76;
+  --colore-testo-debole: #9DA1AB;
+  --colore-testo-inverso: #FFFFFF;
+
+  --colore-bordo: #E7E8EC;
+  --colore-bordo-forte: #D6D8DF;
+
+  /* ---------- Accento di marca (unico) ---------- */
+  --colore-operativita: #4B4FDE;        /* accento primario — interattività, stati attivi */
+  --colore-operativita-forte: #3A3EC4;  /* hover/press dell'accento primario */
+  --colore-operativita-soft: #EEEEFC;   /* tinta leggera per sfondi/badge */
+  --gradiente-accento: linear-gradient(135deg, #6F72EE 0%, #4B4FDE 55%, #3A3EC4 100%);
+
+  /* ---------- Semantica valore (positivo / negativo / attenzione) ---------- */
+  --colore-patrimonio: #0E9F6E;      /* positivo / crescita / ok */
+  --colore-patrimonio-soft: #E5F7EF;
+  --colore-ok: #0E9F6E;
+  --colore-ok-soft: #E5F7EF;
+
+  --colore-avviso: #E0384A;          /* negativo / errore */
+  --colore-avviso-soft: #FCEAEC;
+
+  --colore-ambra: #B4650A;           /* attenzione lieve (non errore, non ok) */
+  --colore-ambra-soft: #FBF0E1;
+
+  /* ---------- Tipografia ---------- */
+  /* Due famiglie invece di tre: Space Grotesk copre sia i titoli sia i numeri (le sue cifre
+     hanno un carattere già "da fintech", nitido e leggermente geometrico) — un font in meno
+     da caricare, un'identità numerica più coerente con i titoli. */
+  --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
+  --font-corpo: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-numeri: 'Space Grotesk', 'Segoe UI', sans-serif;
+
+  /* ---------- Spaziatura ---------- */
+  --spazio-xxs: 4px;
+  --spazio-xs: 8px;
+  --spazio-sm: 12px;
+  --spazio-md: 16px;
+  --spazio-lg: 24px;
+  --spazio-xl: 32px;
+  --spazio-xxl: 48px;
+
+  /* ---------- Raggi ---------- */
+  --raggio-sm: 10px;
+  --raggio: 16px;
+  --raggio-lg: 22px;
+  --raggio-pill: 999px;
+
+  /* ---------- Ombre: leggerissime, riservate a elementi davvero sollevati (modali, FAB,
+     dropdown) — i pannelli normali si separano dalla pagina per contrasto di fondo, non per
+     ombra: risultato più piatto e meno "pesante" (riscontro esplicito dell'utente sull'attuale). */
+  --ombra-soft: 0 1px 2px rgba(20, 21, 26, 0.05);
+  --ombra: 0 1px 3px rgba(20, 21, 26, 0.06), 0 6px 20px rgba(20, 21, 26, 0.05);
+  --ombra-elevata: 0 12px 32px rgba(20, 21, 26, 0.16), 0 2px 8px rgba(20, 21, 26, 0.08);
+
+  /* ---------- Movimento ---------- */
+  --transizione-rapida: 120ms ease;
+  --transizione: 180ms cubic-bezier(0.2, 0, 0, 1);
+
+  /* ---------- Impianto app shell ---------- */
+  --larghezza-sidebar: 248px;
+  --larghezza-sidebar-compatta: 76px;
+  --altezza-topbar-mobile: 56px;
+  --altezza-tabbar-mobile: 60px;
+  --larghezza-massima-contenuto: 1120px;
+}
+
+/* ============================================================
+   Struttura pronta per un tema scuro futuro (non attivato in questa fase — l'utente ha
+   chiesto solo l'impalcatura, non l'implementazione visiva). Attivarlo in futuro significa
+   aggiungere qui i valori scuri sotto [data-tema="scuro"] (o prefers-color-scheme), senza
+   toccare nessun'altra parte dell'app: ogni componente legge solo variabili, mai colori fissi.
+   ============================================================ */
+[data-tema="scuro"] {
+  /* Predisposizione: valori reali da definire quando si deciderà di attivare la dark mode. */
+}
