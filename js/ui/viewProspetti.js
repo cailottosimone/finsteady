@@ -1885,7 +1885,7 @@ function mostraFormRidistribuisciProspetto(zona, container, prospettoId, fondiAt
     }
     return `
       <div class="riga-obiettivo" style="border-bottom:1px solid var(--colore-bordo);">
-        <div style="display:flex; align-items:center; gap:12px;">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
           <strong style="min-width:160px;">${r.nome}</strong>
           <input type="number" step="any" data-i="${i}" class="input-nuovo-fondo-ridistr" value="${r.nuovo}" style="width:110px;">
           ${obDelFondo.length > 0 ? `<button type="button" data-azione="espandi-fondo-ridistr" data-i="${i}" style="margin-left:auto;">${r.espanso ? 'Chiudi' : 'Obiettivi'}</button>` : ''}

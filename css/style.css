@@ -850,3 +850,84 @@ button:hover { border-color: var(--colore-testo-debole); background: var(--color
   font-size: 0.82rem;
   margin-top: 4px;
 }
+
+/* ============================================================
+   Mobile (schermi piccoli) — tutto ciò che segue si applica SOLO
+   sotto questa soglia: la visualizzazione desktop resta invariata.
+   ============================================================
+
+   Problemi risolti qui, in ordine di impatto:
+   1. La barra di tab secondaria (.barra-tab — es. le 7 tab di Impostazioni, o Fondi/Budget
+      dentro Conti) non aveva overflow né wrap: su un telefono le pillole restavano tutte su
+      una riga, allargando l'intera pagina e causando scroll orizzontale su TUTTA l'app, non
+      solo sulla barra — probabilmente il problema più visibile.
+   2. Il gruppo Profilo/Impostazioni/Cloud Sync in nav (.gruppo-icone-nav) era ancorato a destra
+      con margin-left:auto dentro una nav a scroll orizzontale: se le voci di nav non ci
+      stavano, quelle icone finivano fuori schermo e per raggiungerle bisognava scorrere "alla
+      cieca" — ora la nav va semplicemente a capo, tutto resta sempre visibile e raggiungibile.
+   3. Nessun campo di testo garantiva un font-size minimo di 16px: sotto quella soglia Safari
+      iOS ingrandisce automaticamente la pagina ad ogni tap su un campo, un comportamento molto
+      fastidioso e spesso scambiato per un bug dell'app.
+   4. Le tabelle non avevano modo di scorrere in orizzontale: con più colonne (e i campi numerici
+      da 100-110px usati in alcune di esse, es. Distribuisci/Ridistribuisci/Prospetti) finivano
+      per allargare la pagina invece di restare contenute.
+   5. Padding orizzontali pensati per desktop (fino a 36+24px cumulati tra intestazione, nav e
+      pannelli) lasciavano pochissima larghezza utile su un telefono da 360-390px.
+   6. Bottoni icona (32-38px) sotto la soglia minima di tocco comoda consigliata da iOS/Android
+      (~44px).
+   ============================================================ */
+@media (max-width: 720px) {
+
+  .intestazione {
+    padding: 14px var(--spazio-md);
+    gap: 6px;
+  }
+  .intestazione h1 { font-size: 1.1rem; }
+
+  /* Vedi punto 2: la nav va a capo invece di nascondere voci fuori schermo. */
+  .nav-principale {
+    padding: var(--spazio-xs) var(--spazio-md);
+    overflow-x: visible;
+    flex-wrap: wrap;
+  }
+  .nav-btn { padding: 8px 14px; font-size: 0.88rem; }
+  .gruppo-icone-nav { margin-left: 0; }
+
+  /* Vedi punto 5. */
+  .contenuto { padding: var(--spazio-md) var(--spazio-sm) 40px; }
+  .pannello { padding: var(--spazio-md); margin-bottom: var(--spazio-md); }
+
+  /* Vedi punto 1. */
+  .barra-tab { flex-wrap: wrap; }
+
+  /* Vedi punto 6: target di tocco più comodi, senza cambiare le dimensioni su desktop. */
+  .nav-btn-impostazioni { width: 42px; height: 42px; }
+  .btn-icona { width: 40px; height: 40px; font-size: 1.05rem; }
+  .btn-stella-azione { width: 40px; height: 40px; }
+
+  /* Vedi punto 3. */
+  input, select, textarea { font-size: 16px; }
+
+  /* Vedi punto 4: la tabella resta leggibile alla sua larghezza naturale e scorre in
+     orizzontale solo quando serve, invece di forzare colonne illeggibili o allargare la
+     pagina intera. */
+  .tabella, .tabella-integrita {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Il menu "Altre azioni" (Dashboard) è ancorato a destra della sua Azione: su schermi molto
+     stretti, con min-width:230px, poteva sconfinare oltre il bordo sinistro dello schermo. */
+  .dropdown-azioni { max-width: calc(100vw - 32px); }
+
+  /* Un po' meno respiro nei dialoghi modali, per lasciare più spazio al contenuto sui
+     telefoni più piccoli (~320-360px). */
+  .dialog-overlay { padding: var(--spazio-sm); }
+  .dialog-riquadro { padding: var(--spazio-md); }
+
+  /* I form pensati per desktop con max-width elevati (640/720/760px) restano comunque
+     limitati alla larghezza reale dello schermo grazie a max-width — nessuna regola necessaria
+     qui, lo standard box-sizing:border-box già applicato a tutto (riga 45) basta da solo. */
+}

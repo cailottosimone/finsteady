@@ -1,5 +1,41 @@
 # Changelog — Financial Planner
 
+## v0.28-001 — Ottimizzazione responsive per schermi piccoli (mobile)
+
+### Modificato
+Nessuna modifica funzionale: solo CSS (più due correzioni minime a righe flex in
+`viewProspetti.js`/`viewRidistribuzione.js`), racchiuso in un unico blocco `@media (max-width:
+720px)` in fondo a `css/style.css` — la visualizzazione desktop non cambia in alcun modo sopra
+questa soglia.
+
+- **Barra di tab secondaria senza overflow/wrap** (`.barra-tab` — es. le 7 tab di Impostazioni,
+  o Fondi/Budget dentro Conti): su un telefono le pillole restavano tutte su una riga,
+  allargando l'intera pagina e causando scroll orizzontale su tutta l'app. Ora va a capo.
+- **Icone Profilo/Impostazioni/Cloud Sync raggiungibili "alla cieca"**: erano ancorate a destra
+  (`margin-left:auto`) dentro una nav a scroll orizzontale — se le voci di nav non ci stavano,
+  finivano fuori schermo. Ora la nav va a capo invece di scorrere, tutto resta visibile.
+- **Zoom automatico di Safari iOS sui campi di testo**: nessun input/select/textarea garantiva
+  un font-size minimo di 16px (alcuni erano a 0.9-0.95rem, molti senza alcuna regola,
+  ereditando il default del browser ~13px) — sotto quella soglia iOS ingrandisce la pagina ad
+  ogni tap su un campo. Forzato 16px per tutti i campi, solo sotto i 720px.
+- **Tabelle senza scroll orizzontale**: con più colonne (e i campi numerici da 100-110px usati
+  in alcune di esse, es. Distribuisci/Ridistribuisci/Prospetti) allargavano l'intera pagina
+  invece di restare contenute. Ora `.tabella`/`.tabella-integrita` scorrono in orizzontale
+  quando necessario, restando leggibili alla loro larghezza naturale.
+- **Padding orizzontali pensati per desktop**: fino a 36+24px cumulati tra intestazione, nav e
+  pannelli lasciavano pochissima larghezza utile su un telefono da 360-390px. Ridotti sotto i
+  720px.
+- **Bottoni icona sotto la soglia minima di tocco comoda** (~44px, linee guida iOS/Android):
+  `.nav-btn-impostazioni`, `.btn-icona`, `.btn-stella-azione` erano 32-38px. Ingranditi sotto i
+  720px.
+- **Due righe flex con etichetta a larghezza fissa** (`min-width:160px`, Fondo/Obiettivo +
+  campo importo, in Ridistribuisci Liquidità e Prospetti → Ridistribuzione) potevano non
+  entrare in uno schermo stretto insieme al campo numerico accanto: aggiunto `flex-wrap:wrap`
+  (nessun effetto quando c'è spazio sufficiente, quindi anche qui nessun cambiamento visibile
+  su desktop).
+- Piccola clausola di sicurezza sul menu "Altre azioni" (Dashboard) e un po' meno padding nei
+  dialoghi modali, per i telefoni più piccoli (~320-360px).
+
 ## v0.27-001 — FinSteady Cloud Sync
 
 ### Aggiunto
