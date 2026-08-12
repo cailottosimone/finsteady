@@ -1,5 +1,33 @@
 # Changelog — Financial Planner
 
+## v0.29-001 — Correzioni mobile dopo riscontro utente (nav, tabelle, densità)
+
+### Modificato
+Solo CSS/markup, nessuna modifica funzionale. Continua il lavoro di v0.28, corretto alla luce
+dell'uso reale su telefono.
+
+- **Navigazione → menu ad hamburger** (`index.html`, `js/app.js`, `css/style.css`). La nav a
+  capo introdotta in v0.28 restava comunque sempre fissa in cima, occupando spazio permanente.
+  Ora, sotto i 720px, resta chiusa di default (zero spazio occupato) e si apre solo al tocco
+  dell'icona hamburger nell'intestazione; si richiude da sola ad ogni navigazione
+  (`chiudiMenuMobile()` in `app.js`, chiamata da `mostraVista()` — nessun effetto su desktop,
+  la classe `nav-aperta` non è usata sopra i 720px).
+- **Tabelle: causa reale della "condensazione" e delle righe altissime individuata e corretta.**
+  Il fix v0.28 rendeva la tabella scorrevole in teoria, ma senza `white-space:nowrap` sulle
+  celle il layout automatico delle tabelle preferisce SEMPRE andare a capo pur di stare nella
+  larghezza disponibile, invece di scorrere: risultato, colonne strette con testo spezzato su
+  più righe e i 5-6 pulsanti azione impilati su 2-3 righe — da qui le righe altissime segnalate
+  in Conti → Fondi e la sensazione di tabella "condensata" in Movimenti. Ora le celle non vanno
+  più a capo (eccezione per la colonna Descrizione di Movimenti, testo libero potenzialmente
+  lungo — nuova classe `colonna-descrizione`) e la tabella scorre davvero in orizzontale.
+- **Testo leggermente più piccolo in tutto il sito**: un solo cambio alla dimensione font della
+  radice sotto i 720px (`html { font-size: 93.75% }`, 16px → 15px) — si riscalano
+  proporzionalmente tutte le dimensioni tipografiche rem-based dell'app; gli spazi/margini,
+  definiti in px fissi, non cambiano.
+- **Celle di tabella più compatte in verticale**: padding ridotto da `10px 8px` a `7px 10px`
+  (righe più basse, un filo più di respiro orizzontale per compensare la perdita del testo a
+  capo).
+
 ## v0.28-001 — Ottimizzazione responsive per schermi piccoli (mobile)
 
 ### Modificato
