@@ -30,6 +30,13 @@ function estraiEtichette(tabella) {
 function decoraTabella(tabella) {
   const etichette = estraiEtichette(tabella);
   if (etichette.length === 0) return;
+  // Una tabella annidata dentro la cella di dettaglio di un'altra riga (es. l'elenco dei Budget
+  // di un Conto, dentro la riga "Conto" di Budget assegnato per Conto) non riceve la fascia
+  // colorata sul nome: quel colore deve marcare solo il "contenitore" esterno (Conto), non ogni
+  // livello annidato — altrimenti il colore perde di significato, segnalando tutto allo stesso
+  // modo invece di guidare l'occhio verso l'unità principale.
+  const dentroAltraTabella = !!tabella.parentElement?.closest('table.tabella, table.tabella-integrita');
+
   tabella.querySelectorAll(':scope > tbody > tr').forEach((tr) => {
     const celle = tr.querySelectorAll(':scope > td');
     if (celle.length !== etichette.length) return; // riga di dettaglio/espansione: nessuna etichetta
@@ -39,7 +46,7 @@ function decoraTabella(tabella) {
       td.setAttribute('data-label', etichetta);
       td.classList.remove('cella-nome-riga');
       if (!primaAssegnata && etichetta) {
-        td.classList.add('cella-nome-riga');
+        if (!dentroAltraTabella) td.classList.add('cella-nome-riga');
         primaAssegnata = true;
       }
     });

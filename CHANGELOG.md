@@ -1,5 +1,29 @@
 # Changelog — FinSteady
 
+## v0.33-001 — Terzo giro di rifiniture mobile (schede annidate, colore, Categorie)
+
+### Modificato
+- **La fascia colorata sul nome ora appare solo sul "contenitore" esterno**, non sulle righe
+  annidate all'interno (es. "Budget assegnato per Conto": colore solo su Conto, non più anche
+  su ogni singolo Budget nel dettaglio espanso) — `js/utils/tabelleMobiliUtils.js` riconosce
+  quando una tabella è annidata dentro la cella di dettaglio di un'altra ed evita di applicare
+  la fascia lì.
+- **Colore della fascia più deciso**: da tinta lilla tenue a colore pieno (`--colore-operativita`,
+  lo stesso viola/indaco usato per i pulsanti primari nel resto dell'app — coerente col
+  progetto), testo bianco.
+- **Bordo e ombra della scheda leggermente più marcati**: bordo da `--colore-bordo` a
+  `--colore-bordo-forte`, aggiunta `--ombra` (lo stesso valore di ombra già usato per i pannelli
+  in tutta l'app, non un valore nuovo).
+- **Categorie: colonne a piena larghezza su mobile invece di card strette e altissime.**
+  `.colonne-categorie` (due colonne affiancate su desktop, Categorie Obiettivo/Categorie
+  Budget) non aveva una regola di larghezza esplicita per le colonne: su schermi piccoli
+  restavano strette quanto il loro contenuto minimo, causando testo spezzato in continuazione e
+  schede altissime. Ora occupano tutta la larghezza disponibile, una sotto l'altra.
+- **Pulsante "Modifica" di una Categoria, che sembrava non fare nulla su mobile**: il form di
+  modifica si apre sempre in fondo al pannello, dopo entrambe le colonne — con un elenco lungo
+  (ancora più lungo ora che le colonne sono a piena larghezza) restava fuori dallo schermo senza
+  che l'utente se ne accorgesse. Ora la vista scorre automaticamente fino al form appena si apre.
+
 ## v0.32-001 — Fascia colorata sul nome di ogni scheda mobile
 
 ### Modificato
