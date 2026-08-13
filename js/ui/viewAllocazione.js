@@ -366,18 +366,17 @@ function renderPasso3(container, contesto) {
   el.innerHTML = `
     <div class="form-scheda" style="max-width:640px;">
       <h3>3. Righe di allocazione (modificabili)</h3>
-      <table class="tabella">
-        <thead><tr><th>Destinazione</th><th>Importo</th><th></th></tr></thead>
-        <tbody>
-          ${stato.righe.map((r, i) => `
-            <tr>
-              <td>${etichettaElemento(r.tipoDestinazione, r.destinazioneId, contesto)}</td>
-              <td><input type="number" step="any" data-i="${i}" class="input-riga-importo" value="${r.importo}" style="width:100px;"></td>
-              <td><button class="btn-icona" title="Rimuovi riga" data-azione="rimuovi-riga" data-i="${i}"><i class="fa-solid fa-trash"></i></button></td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
+      <div class="lista-editabile">
+        ${stato.righe.map((r, i) => `
+          <div class="riga-editabile">
+            <span class="riga-editabile-nome">${etichettaElemento(r.tipoDestinazione, r.destinazioneId, contesto)}</span>
+            <input type="number" step="any" data-i="${i}" class="input-riga-importo" value="${r.importo}">
+            <div class="riga-editabile-azioni">
+              <button class="btn-icona" title="Rimuovi riga" data-azione="rimuovi-riga" data-i="${i}"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
       <button id="btn-aggiungi-riga"><i class="fa-solid fa-plus"></i> Aggiungi riga</button>
       <div id="form-aggiungi-riga"></div>
       <p class="${coincide ? '' : 'testo-errore'}">

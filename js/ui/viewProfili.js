@@ -53,12 +53,9 @@ export async function renderProfili(container) {
 
   const lista = container.querySelector('#lista-profili');
   lista.innerHTML = `
-    <table class="tabella">
-      <thead><tr><th>Nome</th><th>Creato il</th><th></th><th></th></tr></thead>
-      <tbody>
-        ${profili.map((p) => renderRigaProfilo(p, p.id === attivo.id)).join('')}
-      </tbody>
-    </table>
+    <div class="lista-azioni-elenco">
+      ${profili.map((p) => renderRigaProfilo(p, p.id === attivo.id)).join('')}
+    </div>
   `;
 
   lista.querySelectorAll('button[data-azione="attiva"]').forEach((btn) => {
@@ -205,27 +202,23 @@ function renderAnteprimaImport(container) {
     <div class="form-scheda" style="margin-top:12px;">
       <h4>Anteprima importazione</h4>
       <p class="nota">Data esportazione file: ${formattaDataOra(pacchettoImportCorrente.dataEsportazione)}. Scegli cosa fare per ciascun Profilo prima di confermare.</p>
-      <table class="tabella">
-        <thead><tr><th>Profilo nel file</th><th>Record</th><th>Corrispondenza locale</th><th>Azione</th></tr></thead>
-        <tbody>
-          ${anteprimaImportCorrente.map((voce) => `
-            <tr>
-              <td>${voce.nomeFile}</td>
-              <td class="numero">${voce.numeroRecord}</td>
-              <td>${voce.esistenteLocale
-                ? `${voce.esistenteLocale.nome} <span class="nota-inline">(creato il ${formattaData(voce.esistenteLocale.dataCreazione)})</span>`
-                : '<span class="nota-inline">— nessuna, sarà un Profilo nuovo</span>'}</td>
-              <td>
-                <select data-azione-import="${voce.indice}">
-                  ${voce.esistenteLocale ? `<option value="sostituisci" ${voce.azione === 'sostituisci' ? 'selected' : ''}>Sostituisci "${voce.esistenteLocale.nome}"</option>` : ''}
-                  <option value="nuovo" ${voce.azione === 'nuovo' ? 'selected' : ''}>Importa come Profilo nuovo</option>
-                  <option value="salta" ${voce.azione === 'salta' ? 'selected' : ''}>Salta (non importare)</option>
-                </select>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
+      <div class="lista-editabile">
+        ${anteprimaImportCorrente.map((voce) => `
+          <div class="riga-editabile" style="flex-direction:column; align-items:stretch;">
+            <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+              <span class="riga-editabile-nome"><strong>${voce.nomeFile}</strong><span class="nota-inline">${voce.numeroRecord} record</span></span>
+            </div>
+            <p class="nota-inline" style="margin:2px 0 6px;">${voce.esistenteLocale
+              ? `Corrisponde a: ${voce.esistenteLocale.nome} (creato il ${formattaData(voce.esistenteLocale.dataCreazione)})`
+              : 'Nessuna corrispondenza locale — sarà un Profilo nuovo'}</p>
+            <select data-azione-import="${voce.indice}">
+              ${voce.esistenteLocale ? `<option value="sostituisci" ${voce.azione === 'sostituisci' ? 'selected' : ''}>Sostituisci "${voce.esistenteLocale.nome}"</option>` : ''}
+              <option value="nuovo" ${voce.azione === 'nuovo' ? 'selected' : ''}>Importa come Profilo nuovo</option>
+              <option value="salta" ${voce.azione === 'salta' ? 'selected' : ''}>Salta (non importare)</option>
+            </select>
+          </div>
+        `).join('')}
+      </div>
       <div class="form-azioni">
         <button id="btn-conferma-import-profili" class="btn-primario">Conferma importazione</button>
         <button id="btn-annulla-import-profili">Annulla</button>
@@ -274,34 +267,33 @@ function renderRigaProfilo(p, attivo) {
   const inRinomina = profiloInRinomina === p.id;
   if (inRinomina) {
     return `
-      <tr>
-        <td colspan="2"><input type="text" data-rinomina-id="${p.id}" value="${p.nome}"></td>
-        <td colspan="2">
+      <div class="riga-elenco-azioni">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="text" data-rinomina-id="${p.id}" value="${p.nome}" style="flex:1 1 auto;">
           <div class="azioni-riga">
             <button class="btn-icona" title="Salva" data-azione="salva-rinomina" data-id="${p.id}"><i class="fa-solid fa-check"></i></button>
             <button class="btn-icona" title="Annulla" data-azione="annulla-rinomina" data-id="${p.id}"><i class="fa-solid fa-xmark"></i></button>
           </div>
-        </td>
-      </tr>
+        </div>
+      </div>
     `;
   }
   return `
-    <tr>
-      <td>
-        <div style="display:flex; align-items:center; gap:8px;">
-          ${htmlAvatar(p.nome, 32)}
-          ${p.nome}${attivo ? ' <span class="badge badge-ok">Attivo</span>' : ''}
-        </div>
-      </td>
-      <td>${formattaData(p.dataCreazione)}</td>
-      <td>${attivo ? '' : `<button data-azione="attiva" data-id="${p.id}" data-nome="${p.nome}">Passa a questo Profilo</button>`}</td>
-      <td>
-        <div class="azioni-riga">
-          <button class="btn-icona" title="Rinomina" data-azione="rinomina" data-id="${p.id}"><i class="fa-solid fa-pen"></i></button>
-          ${attivo ? '' : `<button class="btn-icona" title="Elimina" data-azione="elimina-profilo" data-id="${p.id}" data-nome="${p.nome}"><i class="fa-solid fa-trash"></i></button>`}
-        </div>
-      </td>
-    </tr>
+    <div class="riga-elenco-azioni">
+      <div class="riga-elenco-azioni-testata">
+        ${htmlAvatar(p.nome, 32)}
+        <span class="riga-elenco-azioni-titolo">${p.nome}</span>
+        ${attivo ? '<span class="badge badge-ok">Attivo</span>' : ''}
+      </div>
+      <div class="riga-elenco-azioni-meta">
+        <span>Creato il ${formattaData(p.dataCreazione)}</span>
+      </div>
+      <div class="riga-elenco-azioni-azioni azioni-riga">
+        ${attivo ? '' : `<button data-azione="attiva" data-id="${p.id}" data-nome="${p.nome}">Passa a questo Profilo</button>`}
+        <button class="btn-icona" title="Rinomina" data-azione="rinomina" data-id="${p.id}"><i class="fa-solid fa-pen"></i></button>
+        ${attivo ? '' : `<button class="btn-icona" title="Elimina" data-azione="elimina-profilo" data-id="${p.id}" data-nome="${p.nome}"><i class="fa-solid fa-trash"></i></button>`}
+      </div>
+    </div>
   `;
 }
 

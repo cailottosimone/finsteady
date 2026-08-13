@@ -18,7 +18,7 @@ import { calcolaPropostaEqua, calcolaPropostaProporzionale } from '../engine/all
 import { formattaValuta } from '../utils/formatCurrency.js';
 import { arrotonda } from '../utils/denaro.js';
 import { formattaData } from '../utils/dateUtils.js';
-import { ordina, filtraTesto, intestazioneOrdinabile, collegaOrdinamento } from '../utils/listaUtils.js';
+import { ordina, filtraTesto } from '../utils/listaUtils.js';
 import { mostraConferma } from '../utils/dialogUtils.js';
 
 let prospettoEspansoId = null;
@@ -127,25 +127,26 @@ async function renderTabella(container, prospettiCompleti, mappaPiani) {
   }
 
   lista.innerHTML = `
-    <table class="tabella">
-      <thead><tr>
-        <th></th>
-        ${intestazioneOrdinabile('Nome', 'nome', stato)}
-        <th></th>
-        <th>Piano</th>
-        <th>Parte da</th>
-        <th>Orizzonte</th>
-        <th>Entrata/ciclo</th>
-        ${intestazioneOrdinabile('Creato il', 'dataCreazione', stato)}
-        <th></th>
-      </tr></thead>
-      <tbody>
-        ${righeHtml.join('')}
-      </tbody>
-    </table>
+    <div class="barra-strumenti-movimenti">
+      <label class="nota-inline">Ordina per
+        <select id="select-ordina-prospetti">
+          <option value="nome" ${stato.ordineChiave === 'nome' ? 'selected' : ''}>Nome</option>
+          <option value="dataCreazione" ${stato.ordineChiave === 'dataCreazione' ? 'selected' : ''}>Data creazione</option>
+        </select>
+      </label>
+      <button type="button" id="btn-direzione-ordina-prospetti" class="btn-icona" title="${stato.ordineDecrescente ? 'Decrescente' : 'Crescente'}">
+        <i class="fa-solid ${stato.ordineDecrescente ? 'fa-arrow-down-wide-short' : 'fa-arrow-up-wide-short'}"></i>
+      </button>
+    </div>
+    <div class="lista-azioni-elenco">
+      ${righeHtml.join('')}
+    </div>
   `;
 
-  collegaOrdinamento(lista, stato, () => renderTabella(container, prospettiCompleti, mappaPiani));
+  const selectOrdina = lista.querySelector('#select-ordina-prospetti');
+  if (selectOrdina) selectOrdina.addEventListener('change', (e) => { stato.ordineChiave = e.target.value; renderTabella(container, prospettiCompleti, mappaPiani); });
+  const btnDirezione = lista.querySelector('#btn-direzione-ordina-prospetti');
+  if (btnDirezione) btnDirezione.addEventListener('click', () => { stato.ordineDecrescente = !stato.ordineDecrescente; renderTabella(container, prospettiCompleti, mappaPiani); });
 
   lista.querySelectorAll('input.checkbox-confronto').forEach((cb) => {
     cb.addEventListener('change', () => {
@@ -381,40 +382,42 @@ function renderRigaProiezione({ prospettoId, tipo, id, nome, attuale, partenza, 
   const chiave = `${tipo}:${id}`;
   const inModifica = righeInModificaPartenza.has(chiave);
   const diff = proiettato - partenza;
-  const cellaQuarta = colonnaExtra !== undefined
-    ? colonnaExtra
-    : `<td class="numero" style="color:${diff >= 0 ? 'var(--colore-patrimonio)' : 'var(--colore-avviso)'};">${diff >= 0 ? '+' : ''}${formattaValuta(diff)}</td>`;
 
   if (inModifica) {
     return `
-      <tr>
-        <td>${nome}</td>
-        <td><input type="number" step="any" class="input-modifica-partenza" data-chiave="${chiave}" value="${partenza}" style="width:110px;"></td>
-        <td class="numero">${formattaValuta(proiettato)}</td>
-        ${colonnaExtra !== undefined ? colonnaExtra : '<td></td>'}
-        <td>
-          <div class="azioni-riga">
-            <button class="btn-icona" title="Salva" data-azione="salva-partenza" data-chiave="${chiave}" data-tipo="${tipo}" data-id="${id}"><i class="fa-solid fa-check"></i></button>
-            <button class="btn-icona" title="Annulla" data-azione="annulla-partenza" data-chiave="${chiave}"><i class="fa-solid fa-xmark"></i></button>
-          </div>
-        </td>
-      </tr>
+      <div class="riga-metrica">
+        <span class="riga-metrica-nome">${nome}</span>
+        <div class="riga-metrica-valori" style="align-items:center;">
+          <label style="display:flex; flex-direction:column; gap:2px;">
+            <span class="etichetta" style="font-size:0.64rem; color:var(--colore-testo-debole); text-transform:uppercase;">Punto di partenza</span>
+            <input type="number" step="any" class="input-modifica-partenza" data-chiave="${chiave}" value="${partenza}" style="width:110px;">
+          </label>
+          <span class="riga-metrica-valore"><span class="etichetta">Proiettato</span><span class="numero">${formattaValuta(proiettato)}</span></span>
+          ${colonnaExtra ? `<span class="riga-metrica-valore"><span class="etichetta">${colonnaExtra.etichetta}</span><span class="numero">${colonnaExtra.valore}</span></span>` : ''}
+        </div>
+        <div class="riga-metrica-azioni">
+          <button class="btn-icona" title="Salva" data-azione="salva-partenza" data-chiave="${chiave}" data-tipo="${tipo}" data-id="${id}"><i class="fa-solid fa-check"></i></button>
+          <button class="btn-icona" title="Annulla" data-azione="annulla-partenza" data-chiave="${chiave}"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
     `;
   }
 
   return `
-    <tr>
-      <td>${nome}</td>
-      <td class="numero">${formattaValuta(partenza)}${override ? ` <span class="nota-inline">(reale ${formattaValuta(attuale)})</span>` : ''}</td>
-      <td class="numero">${formattaValuta(proiettato)}</td>
-      ${cellaQuarta}
-      <td>
-        <div class="azioni-riga">
-          <button class="btn-icona" title="Modifica punto di partenza" data-azione="modifica-partenza" data-chiave="${chiave}"><i class="fa-solid fa-pen"></i></button>
-          ${override ? `<button class="btn-icona" title="Ripristina saldo reale" data-azione="reset-partenza" data-override-id="${override.id}"><i class="fa-solid fa-rotate-left"></i></button>` : ''}
-        </div>
-      </td>
-    </tr>
+    <div class="riga-metrica">
+      <span class="riga-metrica-nome">${nome}</span>
+      <div class="riga-metrica-valori">
+        <span class="riga-metrica-valore"><span class="etichetta">Partenza</span><span class="numero">${formattaValuta(partenza)}</span>${override ? `<span class="riga-metrica-sotto">reale ${formattaValuta(attuale)}</span>` : ''}</span>
+        <span class="riga-metrica-valore"><span class="etichetta">Proiettato</span><span class="numero">${formattaValuta(proiettato)}</span></span>
+        ${colonnaExtra
+          ? `<span class="riga-metrica-valore"><span class="etichetta">${colonnaExtra.etichetta}</span><span class="numero">${colonnaExtra.valore}</span></span>`
+          : `<span class="riga-metrica-valore"><span class="etichetta">Differenza</span><span class="numero ${diff >= 0 ? 'positivo' : 'negativo'}">${diff >= 0 ? '+' : ''}${formattaValuta(diff)}</span></span>`}
+      </div>
+      <div class="riga-metrica-azioni">
+        <button class="btn-icona" title="Modifica punto di partenza" data-azione="modifica-partenza" data-chiave="${chiave}"><i class="fa-solid fa-pen"></i></button>
+        ${override ? `<button class="btn-icona" title="Ripristina saldo reale" data-azione="reset-partenza" data-override-id="${override.id}"><i class="fa-solid fa-rotate-left"></i></button>` : ''}
+      </div>
+    </div>
   `;
 }
 
@@ -464,35 +467,35 @@ async function renderRigaProspetto(p, mappaPiani, mappaProspetti) {
     ? `Prospetto: ${mappaProspetti.get(p.prospettoOrigineId)?.nome || '(eliminato)'}`
     : `Oggi (${formattaData(p.dataInizio)})`;
   return `
-    <tr>
-      <td><input type="checkbox" class="checkbox-confronto" data-id="${p.id}" ${selezionatiConfronto.has(p.id) ? 'checked' : ''}></td>
-      <td>${p.nome}</td>
-      <td>${p.bloccato ? '<span class="badge" style="background:#eee;" title="Bloccato: sblocca per modificarlo"><i class="fa-solid fa-lock"></i></span>' : ''}</td>
-      <td>${pianoNome}</td>
-      <td class="nota-inline">${parteDa}</td>
-      <td>${descrizioneOrizzonte(p)}</td>
-      <td class="numero">${formattaValuta(p.importoEntrataPerCiclo)}</td>
-      <td>${formattaData(p.dataCreazione)}</td>
-      <td style="white-space:nowrap;">
-        <div class="azioni-riga" style="flex-wrap:nowrap;">
-          <button class="btn-icona" title="Visualizza anteprima" data-azione="anteprima" data-id="${p.id}"><i class="fa-solid fa-eye"></i></button>
-          <button class="btn-icona" title="${espanso ? 'Chiudi' : 'Proiezione'}" data-azione="espandi" data-id="${p.id}">${espanso ? '<i class="fa-solid fa-chevron-up"></i>' : '<i class="fa-solid fa-chevron-down"></i>'}</button>
-          <button class="btn-icona" title="${p.bloccato ? 'Bloccato: sblocca per modificare' : 'Modifica'}" data-azione="modifica" data-id="${p.id}" ${p.bloccato ? 'disabled' : ''}><i class="fa-solid fa-pen"></i></button>
-          <button class="btn-icona" title="Duplica (nuova copia indipendente, modificabile)" data-azione="duplica-prospetto" data-id="${p.id}"><i class="fa-solid fa-clone"></i></button>
-          ${p.bloccato
-            ? `<button class="btn-icona" title="Sblocca (rendi di nuovo modificabile)" data-azione="sblocca-prospetto" data-id="${p.id}"><i class="fa-solid fa-lock-open"></i></button>`
-            : `<button class="btn-icona" title="Blocca (impedisce modifiche involontarie)" data-azione="blocca-prospetto" data-id="${p.id}"><i class="fa-solid fa-lock"></i></button>`}
-          <button class="btn-icona" title="Elimina" data-azione="elimina" data-id="${p.id}"><i class="fa-solid fa-trash"></i></button>
-        </div>
-      </td>
-    </tr>
-    ${espanso ? `
-      <tr>
-        <td colspan="9" style="background:var(--colore-sfondo-soft);">
+    <div class="riga-elenco-azioni">
+      <div class="riga-elenco-azioni-testata">
+        <input type="checkbox" class="checkbox-confronto" data-id="${p.id}" ${selezionatiConfronto.has(p.id) ? 'checked' : ''}>
+        <span class="riga-elenco-azioni-titolo">${p.nome}</span>
+        ${p.bloccato ? '<span class="badge" title="Bloccato: sblocca per modificarlo"><i class="fa-solid fa-lock"></i> Bloccato</span>' : ''}
+      </div>
+      <div class="riga-elenco-azioni-meta">
+        <span>Piano: ${pianoNome}</span>
+        <span>· Parte da: ${parteDa}</span>
+        <span>· Orizzonte: ${descrizioneOrizzonte(p)}</span>
+        <span>· Entrata/ciclo: ${formattaValuta(p.importoEntrataPerCiclo)}</span>
+        <span>· Creato il: ${formattaData(p.dataCreazione)}</span>
+      </div>
+      <div class="riga-elenco-azioni-azioni azioni-riga">
+        <button class="btn-icona" title="Visualizza anteprima" data-azione="anteprima" data-id="${p.id}"><i class="fa-solid fa-eye"></i></button>
+        <button class="btn-icona" title="${espanso ? 'Chiudi' : 'Proiezione'}" data-azione="espandi" data-id="${p.id}">${espanso ? '<i class="fa-solid fa-chevron-up"></i>' : '<i class="fa-solid fa-chevron-right"></i>'}</button>
+        <button class="btn-icona" title="${p.bloccato ? 'Bloccato: sblocca per modificare' : 'Modifica'}" data-azione="modifica" data-id="${p.id}" ${p.bloccato ? 'disabled' : ''}><i class="fa-solid fa-pen"></i></button>
+        <button class="btn-icona" title="Duplica (nuova copia indipendente, modificabile)" data-azione="duplica-prospetto" data-id="${p.id}"><i class="fa-solid fa-clone"></i></button>
+        ${p.bloccato
+          ? `<button class="btn-icona" title="Sblocca (rendi di nuovo modificabile)" data-azione="sblocca-prospetto" data-id="${p.id}"><i class="fa-solid fa-lock-open"></i></button>`
+          : `<button class="btn-icona" title="Blocca (impedisce modifiche involontarie)" data-azione="blocca-prospetto" data-id="${p.id}"><i class="fa-solid fa-lock"></i></button>`}
+        <button class="btn-icona" title="Elimina" data-azione="elimina" data-id="${p.id}"><i class="fa-solid fa-trash"></i></button>
+      </div>
+      ${espanso ? `
+        <div class="riga-elenco-azioni-dettaglio">
           <div id="dettaglio-prospetto-${p.id}"></div>
-        </td>
-      </tr>
-    ` : ''}
+        </div>
+      ` : ''}
+    </div>
   `;
 }
 
@@ -575,62 +578,50 @@ async function renderDettaglioProspetto(container, prospettoId) {
     ${risultato.nonAllocatoLordo > 0.005 ? `
       <h4 style="margin-top:16px;">Non allocati dal Piano</h4>
       <p class="nota">Non sono un errore: sono la parte di entrata ipotizzata che il Piano collegato non assegna a nessuna destinazione — mai sparita, riallocabile con "Ridistribuisci" più sotto.</p>
-      <table class="tabella">
-        <thead><tr><th>Per ciclo</th><th>Cicli</th><th>Totale nel periodo</th><th>Ancora disponibili</th></tr></thead>
-        <tbody>
-          <tr>
-            <td class="numero">${formattaValuta(risultato.nonAllocatoPerCiclo)}</td>
-            <td class="numero">${numeroCicli}</td>
-            <td class="numero">${formattaValuta(risultato.nonAllocatoLordo)}</td>
-            <td class="numero ${risultato.nonAllocatoDisponibile > 0.005 ? 'testo-errore' : ''}">${formattaValuta(risultato.nonAllocatoDisponibile)}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="kpi-riga">
+        <div class="kpi"><span class="kpi-label">Per ciclo</span><span class="kpi-valore" style="font-size:1.1rem;">${formattaValuta(risultato.nonAllocatoPerCiclo)}</span></div>
+        <div class="kpi"><span class="kpi-label">Cicli</span><span class="kpi-valore" style="font-size:1.1rem;">${numeroCicli}</span></div>
+        <div class="kpi"><span class="kpi-label">Totale nel periodo</span><span class="kpi-valore" style="font-size:1.1rem;">${formattaValuta(risultato.nonAllocatoLordo)}</span></div>
+        <div class="kpi"><span class="kpi-label">Ancora disponibili</span><span class="kpi-valore" style="font-size:1.1rem; ${risultato.nonAllocatoDisponibile > 0.005 ? 'color:var(--colore-avviso);' : ''}">${formattaValuta(risultato.nonAllocatoDisponibile)}</span></div>
+      </div>
     ` : ''}
-    <div class="azioni-riga" style="margin-bottom:8px; flex-wrap:nowrap; overflow-x:auto;">
-      <button id="btn-mostra-tutti-${prospettoId}" style="white-space:nowrap;">
+    <div class="azioni-riga" style="margin-bottom:8px;">
+      <button id="btn-mostra-tutti-${prospettoId}">
         <i class="fa-solid fa-eye"></i> ${mostraTutti ? 'Mostra solo i Fondi/Obiettivi coinvolti' : 'Mostra anche non coinvolti'}
       </button>
-      <button id="btn-ricalcola-prospetto-${prospettoId}" style="white-space:nowrap;" title="Corregge i movimenti di Trasferisci/Ridistribuisci calcolati con versioni precedenti dell'app">
+      <button id="btn-ricalcola-prospetto-${prospettoId}" title="Corregge i movimenti di Trasferisci/Ridistribuisci calcolati con versioni precedenti dell'app">
         <i class="fa-solid fa-rotate"></i> Ricalcola Prospetto
       </button>
-      <button id="btn-stampa-prospetto-${prospettoId}" style="white-space:nowrap;"><i class="fa-solid fa-print"></i> Anteprima stampa / PDF</button>
+      <button id="btn-stampa-prospetto-${prospettoId}"><i class="fa-solid fa-print"></i> Anteprima stampa / PDF</button>
     </div>
 
     <h4>Conti a fine Prospetto</h4>
     ${contiProiettati.length === 0 ? '<p class="nota">Nessun Conto presente.</p>' : `
-      <table class="tabella">
-        <thead><tr>
-          <th>Conto</th>
-          <th>Saldo attuale</th>
-          ${!baselineReale ? '<th>Saldo Prospetto precedente</th>' : ''}
-          <th>Patrimonio previsto</th>
-          <th>Differenza (vs. ${baselineReale ? 'saldo attuale' : 'Prospetto precedente'})</th>
-        </tr></thead>
-        <tbody>
-          ${contiProiettati.map(({ conto, proiettato, saldoPrecedente }) => {
-            const diff = arrotonda(proiettato - (baselineReale ? conto.saldoReale : saldoPrecedente));
-            return `
-              <tr>
-                <td>${conto.nome}</td>
-                <td class="numero">${formattaValuta(conto.saldoReale)}</td>
-                ${!baselineReale ? `<td class="numero">${formattaValuta(saldoPrecedente)}</td>` : ''}
-                <td class="numero">${formattaValuta(proiettato)}</td>
-                <td class="numero" style="color:${diff >= 0 ? 'var(--colore-patrimonio)' : 'var(--colore-avviso)'};">${diff >= 0 ? '+' : ''}${formattaValuta(diff)}</td>
-              </tr>
-            `;
-          }).join('')}
-          <tr style="font-weight:600; border-top: 2px solid var(--colore-bordo-forte);">
-            <td>Totale</td>
-            <td class="numero">${formattaValuta(patrimonioTotaleAttuale)}</td>
-            ${!baselineReale ? `<td class="numero">${formattaValuta(patrimonioTotalePrecedente)}</td>` : ''}
-            <td class="numero">${formattaValuta(patrimonioTotaleProiettato)}</td>
-            <td class="numero" style="color:${patrimonioTotaleProiettato - (baselineReale ? patrimonioTotaleAttuale : patrimonioTotalePrecedente) >= 0 ? 'var(--colore-patrimonio)' : 'var(--colore-avviso)'};">
-              ${patrimonioTotaleProiettato - (baselineReale ? patrimonioTotaleAttuale : patrimonioTotalePrecedente) >= 0 ? '+' : ''}${formattaValuta(patrimonioTotaleProiettato - (baselineReale ? patrimonioTotaleAttuale : patrimonioTotalePrecedente))}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="lista-metriche">
+        ${contiProiettati.map(({ conto, proiettato, saldoPrecedente }) => {
+          const diff = arrotonda(proiettato - (baselineReale ? conto.saldoReale : saldoPrecedente));
+          return `
+            <div class="riga-metrica">
+              <span class="riga-metrica-nome">${conto.nome}</span>
+              <div class="riga-metrica-valori">
+                <span class="riga-metrica-valore"><span class="etichetta">Saldo attuale</span><span class="numero">${formattaValuta(conto.saldoReale)}</span></span>
+                ${!baselineReale ? `<span class="riga-metrica-valore"><span class="etichetta">Prospetto precedente</span><span class="numero">${formattaValuta(saldoPrecedente)}</span></span>` : ''}
+                <span class="riga-metrica-valore"><span class="etichetta">Previsto</span><span class="numero">${formattaValuta(proiettato)}</span></span>
+                <span class="riga-metrica-valore"><span class="etichetta">Differenza</span><span class="numero ${diff >= 0 ? 'positivo' : 'negativo'}">${diff >= 0 ? '+' : ''}${formattaValuta(diff)}</span></span>
+              </div>
+            </div>
+          `;
+        }).join('')}
+        <div class="riga-metrica totale">
+          <span class="riga-metrica-nome">Totale</span>
+          <div class="riga-metrica-valori">
+            <span class="riga-metrica-valore"><span class="etichetta">Saldo attuale</span><span class="numero">${formattaValuta(patrimonioTotaleAttuale)}</span></span>
+            ${!baselineReale ? `<span class="riga-metrica-valore"><span class="etichetta">Prospetto precedente</span><span class="numero">${formattaValuta(patrimonioTotalePrecedente)}</span></span>` : ''}
+            <span class="riga-metrica-valore"><span class="etichetta">Previsto</span><span class="numero">${formattaValuta(patrimonioTotaleProiettato)}</span></span>
+            <span class="riga-metrica-valore"><span class="etichetta">Differenza</span><span class="numero ${patrimonioTotaleProiettato - (baselineReale ? patrimonioTotaleAttuale : patrimonioTotalePrecedente) >= 0 ? 'positivo' : 'negativo'}">${patrimonioTotaleProiettato - (baselineReale ? patrimonioTotaleAttuale : patrimonioTotalePrecedente) >= 0 ? '+' : ''}${formattaValuta(patrimonioTotaleProiettato - (baselineReale ? patrimonioTotaleAttuale : patrimonioTotalePrecedente))}</span></span>
+          </div>
+        </div>
+      </div>
     `}
 
     <h4 style="margin-top:16px;">Andamento Budget (stima)</h4>
@@ -638,61 +629,56 @@ async function renderDettaglioProspetto(container, prospettoId) {
       ${budgetStimatiDaPiano ? 'Importo per ciclo calcolato dal Piano collegato.' : 'Stima generica sull\'importo di default (nessun Piano collegato con Voci verso Budget).'}
     </p>
     ${budgetStimati.length === 0 ? '<p class="nota">Nessun Budget da mostrare.</p>' : `
-      <table class="tabella">
-        <thead><tr><th>Budget</th><th>Importo per ciclo</th><th>Cicli nel periodo</th><th>Totale impegnato</th></tr></thead>
-        <tbody>
-          ${budgetStimati.map(({ budget: b, totaleImpegnato }) => `
-            <tr>
-              <td>${b.nome}</td>
-              <td class="numero">${formattaValuta(numeroCicli > 0 ? totaleImpegnato / numeroCicli : 0)}</td>
-              <td>${numeroCicli}</td>
-              <td class="numero">${formattaValuta(totaleImpegnato)}</td>
-            </tr>
-          `).join('')}
-          <tr style="font-weight:600; border-top: 2px solid var(--colore-bordo-forte);">
-            <td colspan="3">Totale impegnato su tutti i Budget${budgetStimatiDaPiano ? ' collegati al Piano' : ' attivi'}</td>
-            <td class="numero">${formattaValuta(budgetStimati.reduce((s, x) => s + x.totaleImpegnato, 0))}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="lista-metriche">
+        ${budgetStimati.map(({ budget: b, totaleImpegnato }) => `
+          <div class="riga-metrica">
+            <span class="riga-metrica-nome">${b.nome}</span>
+            <div class="riga-metrica-valori">
+              <span class="riga-metrica-valore"><span class="etichetta">Per ciclo</span><span class="numero">${formattaValuta(numeroCicli > 0 ? totaleImpegnato / numeroCicli : 0)}</span></span>
+              <span class="riga-metrica-valore"><span class="etichetta">Cicli</span><span class="numero">${numeroCicli}</span></span>
+              <span class="riga-metrica-valore"><span class="etichetta">Totale impegnato</span><span class="numero">${formattaValuta(totaleImpegnato)}</span></span>
+            </div>
+          </div>
+        `).join('')}
+        <div class="riga-metrica totale">
+          <span class="riga-metrica-nome">Totale su tutti i Budget${budgetStimatiDaPiano ? ' collegati al Piano' : ' attivi'}</span>
+          <div class="riga-metrica-valori">
+            <span class="riga-metrica-valore"><span class="etichetta">Totale impegnato</span><span class="numero">${formattaValuta(budgetStimati.reduce((s, x) => s + x.totaleImpegnato, 0))}</span></span>
+          </div>
+        </div>
+      </div>
     `}
 
     <h4 style="margin-top:16px;">Fondi</h4>
     <button id="btn-aggiungi-partenza-fondo-${prospettoId}" style="margin-bottom:8px;"><i class="fa-solid fa-plus"></i> Personalizza punto di partenza di un Fondo</button>
     ${fondiDaMostrare.length === 0 ? '<p class="nota">Nessun Fondo da mostrare.</p>' : `
-      <table class="tabella">
-        <thead><tr><th>Fondo</th><th>Punto di partenza</th><th>Saldo proiettato</th><th>Differenza</th><th></th></tr></thead>
-        <tbody>
-          ${fondiDaMostrare.map((f) => renderRigaProiezione({
-            prospettoId, tipo: 'fondo', id: f.id,
-            nome: mappaFondiAttuali.get(f.id)?.nome || '(eliminato)',
-            attuale: mappaFondiAttuali.get(f.id)?.saldo,
-            partenza: mappaFondiPartenza.get(f.id)?.saldo,
-            proiettato: f.saldo,
-            override: mappaOverrideFondi.get(f.id)
-          })).join('')}
-        </tbody>
-      </table>
+      <div class="lista-metriche">
+        ${fondiDaMostrare.map((f) => renderRigaProiezione({
+          prospettoId, tipo: 'fondo', id: f.id,
+          nome: mappaFondiAttuali.get(f.id)?.nome || '(eliminato)',
+          attuale: mappaFondiAttuali.get(f.id)?.saldo,
+          partenza: mappaFondiPartenza.get(f.id)?.saldo,
+          proiettato: f.saldo,
+          override: mappaOverrideFondi.get(f.id)
+        })).join('')}
+      </div>
     `}
     <div id="form-partenza-fondo-${prospettoId}"></div>
 
     <h4 style="margin-top:16px;">Obiettivi</h4>
     <button id="btn-aggiungi-partenza-obiettivo-${prospettoId}" style="margin-bottom:8px;"><i class="fa-solid fa-plus"></i> Personalizza punto di partenza di un Obiettivo</button>
     ${obiettiviDaMostrare.length === 0 ? '<p class="nota">Nessun Obiettivo da mostrare.</p>' : `
-      <table class="tabella">
-        <thead><tr><th>Obiettivo</th><th>Punto di partenza</th><th>Accumulato proiettato</th><th>Target</th><th></th></tr></thead>
-        <tbody>
-          ${obiettiviDaMostrare.map((o) => renderRigaProiezione({
-            prospettoId, tipo: 'obiettivo', id: o.id,
-            nome: mappaObiettiviAttuali.get(o.id)?.nome || '(eliminato)',
-            attuale: mappaObiettiviAttuali.get(o.id)?.saldoAccumulato,
-            partenza: mappaObiettiviPartenza.get(o.id)?.saldoAccumulato,
-            proiettato: o.saldoAccumulato,
-            override: mappaOverrideObiettivi.get(o.id),
-            colonnaExtra: `<td class="numero">${formattaValuta(mappaObiettiviAttuali.get(o.id)?.importoTarget)}</td>`
-          })).join('')}
-        </tbody>
-      </table>
+      <div class="lista-metriche">
+        ${obiettiviDaMostrare.map((o) => renderRigaProiezione({
+          prospettoId, tipo: 'obiettivo', id: o.id,
+          nome: mappaObiettiviAttuali.get(o.id)?.nome || '(eliminato)',
+          attuale: mappaObiettiviAttuali.get(o.id)?.saldoAccumulato,
+          partenza: mappaObiettiviPartenza.get(o.id)?.saldoAccumulato,
+          proiettato: o.saldoAccumulato,
+          override: mappaOverrideObiettivi.get(o.id),
+          colonnaExtra: { etichetta: 'Target', valore: formattaValuta(mappaObiettiviAttuali.get(o.id)?.importoTarget) }
+        })).join('')}
+      </div>
     `}
     <div id="form-partenza-obiettivo-${prospettoId}"></div>
 
@@ -870,32 +856,33 @@ function rigaMovimentoProspettoHtml(m, righeStessoGruppo, nomeDestinazioneMovime
     : `${m.tipoDestinazione === 'obiettivo' ? 'Obiettivo: ' : 'Fondo: '}${nomeDestinazioneMovimento(m)}`;
   const nota = m.descrizione && m.descrizione !== DESCRIZIONE_TRASFERIMENTO_RIDISTRIBUZIONE ? m.descrizione : '—';
   return `
-    <tr>
-      <td>${m.tipo === 'ripetitivo' ? 'Ripetitivo' : 'Singolo'}</td>
-      <td>${m.tipo === 'ripetitivo' ? `ogni ${m.giornoMese} del mese` : formattaData(m.data)}${m.fuoriOrizzonte ? ' <span class="badge badge-errore">fuori orizzonte</span>' : ''}</td>
-      <td class="numero ${m.importo < 0 ? 'testo-errore' : ''}">${m.importo >= 0 ? '+' : ''}${formattaValuta(m.importo)}</td>
-      <td>${etichettaDestinazione}${righeStessoGruppo.length > 1 ? ` <span class="nota-inline">(1 di ${righeStessoGruppo.length})</span>` : ''}</td>
-      <td class="nota-inline">${nota}</td>
-      <td>
-        <div class="azioni-riga">
-          <button class="btn-icona" title="Modifica questa riga" data-azione="modifica-movimento" data-id="${m.id}"><i class="fa-solid fa-pen"></i></button>
-          <button class="btn-icona" title="Elimina questa riga" data-azione="elimina-movimento" data-id="${m.id}"><i class="fa-solid fa-trash"></i></button>
-          ${righeStessoGruppo.length > 1 && primoDelGruppo ? `<button class="btn-icona" title="Elimina l'intero gruppo" data-azione="elimina-gruppo-movimento" data-gruppo-id="${m.gruppoId || m.id}"><i class="fa-solid fa-trash-can-arrow-up"></i></button>` : ''}
-        </div>
-      </td>
-    </tr>
+    <div class="riga-elenco-azioni">
+      <div class="riga-elenco-azioni-testata">
+        <span class="riga-elenco-azioni-titolo">${etichettaDestinazione}</span>
+        <span class="badge ${m.importo < 0 ? '' : 'badge-ok'}">${m.importo >= 0 ? '+' : ''}${formattaValuta(m.importo)}</span>
+        ${m.fuoriOrizzonte ? '<span class="badge badge-errore">fuori orizzonte</span>' : ''}
+      </div>
+      <div class="riga-elenco-azioni-meta">
+        <span>${m.tipo === 'ripetitivo' ? 'Ripetitivo' : 'Singolo'}</span>
+        <span>· ${m.tipo === 'ripetitivo' ? `ogni ${m.giornoMese} del mese` : formattaData(m.data)}</span>
+        ${righeStessoGruppo.length > 1 ? `<span>· 1 di ${righeStessoGruppo.length}</span>` : ''}
+        <span>· ${nota}</span>
+      </div>
+      <div class="riga-elenco-azioni-azioni azioni-riga">
+        <button class="btn-icona" title="Modifica questa riga" data-azione="modifica-movimento" data-id="${m.id}"><i class="fa-solid fa-pen"></i></button>
+        <button class="btn-icona" title="Elimina questa riga" data-azione="elimina-movimento" data-id="${m.id}"><i class="fa-solid fa-trash"></i></button>
+        ${righeStessoGruppo.length > 1 && primoDelGruppo ? `<button class="btn-icona" title="Elimina l'intero gruppo" data-azione="elimina-gruppo-movimento" data-gruppo-id="${m.gruppoId || m.id}"><i class="fa-solid fa-trash-can-arrow-up"></i></button>` : ''}
+      </div>
+    </div>
   `;
 }
 
 function tabellaMovimentiProspettoHtml(righe, nomeDestinazioneMovimento, messaggioVuoto) {
   if (righe.length === 0) return `<p class="nota">${messaggioVuoto}</p>`;
   return `
-    <table class="tabella">
-      <thead><tr><th>Tipo</th><th>Quando</th><th>Importo</th><th>Destinazione</th><th>Note</th><th></th></tr></thead>
-      <tbody>
-        ${righe.map((m) => rigaMovimentoProspettoHtml(m, righe.filter((x) => (x.gruppoId || x.id) === (m.gruppoId || m.id)), nomeDestinazioneMovimento)).join('')}
-      </tbody>
-    </table>
+    <div class="lista-azioni-elenco">
+      ${righe.map((m) => rigaMovimentoProspettoHtml(m, righe.filter((x) => (x.gruppoId || x.id) === (m.gruppoId || m.id)), nomeDestinazioneMovimento)).join('')}
+    </div>
   `;
 }
 
@@ -1573,18 +1560,15 @@ function renderBloccoDivisione(bloccoDiviso, stato, fondi, obiettiviPerFondo) {
           <option value="manuale" ${stato.strategia === 'manuale' ? 'selected' : ''}>Manuale</option>
         </select>
       </label>
-      <table class="tabella" style="margin-top:8px;">
-        <thead><tr><th></th><th>Obiettivo</th><th>Importo</th></tr></thead>
-        <tbody>
-          ${obiettiviFondo.map((o) => `
-            <tr>
-              <td><input type="checkbox" class="checkbox-obiettivo-diviso" data-obiettivo-id="${o.id}" ${stato.obiettiviSelezionati.has(o.id) ? 'checked' : ''}></td>
-              <td>${o.nome}</td>
-              <td><input type="number" step="any" class="input-importo-obiettivo-diviso" data-obiettivo-id="${o.id}" value="0"></td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
+      <div class="lista-editabile" style="margin-top:8px;">
+        ${obiettiviFondo.map((o) => `
+          <div class="riga-editabile">
+            <span class="riga-editabile-checkbox"><input type="checkbox" class="checkbox-obiettivo-diviso checkbox-quadrata" data-obiettivo-id="${o.id}" ${stato.obiettiviSelezionati.has(o.id) ? 'checked' : ''}></span>
+            <span class="riga-editabile-nome">${o.nome}</span>
+            <input type="number" step="any" class="input-importo-obiettivo-diviso" data-obiettivo-id="${o.id}" value="0">
+          </div>
+        `).join('')}
+      </div>
     `}
   `;
 
@@ -1821,7 +1805,7 @@ function mostraFormRidistribuisciProspetto(zona, container, prospettoId, fondiAt
           <div class="form-azioni" style="margin-bottom:10px;">
             <button type="button" class="btn-equa-fondi-ridistr">Equamente</button>
           </div>
-          ${s.righeFondi.map((r, i) => renderRigaFondoRidistribuzione(r, i)).join('')}
+          <div class="lista-editabile">${s.righeFondi.map((r, i) => renderRigaFondoRidistribuzione(r, i)).join('')}</div>
           <p class="${valido ? '' : 'testo-errore'}" style="margin-top:8px;">
             Assegnato ai Fondi: ${formattaValuta(totaleAssegnato)} / Totale da ridistribuire: ${formattaValuta(s.importoTotale)}
             ${valido ? '' : ` — differenza di ${formattaValuta(residuo)}: la somma deve coincidere esattamente`}
@@ -1862,22 +1846,19 @@ function mostraFormRidistribuisciProspetto(zona, container, prospettoId, fondiAt
               <option value="manuale" ${r.divisione.strategia === 'manuale' ? 'selected' : ''}>Manuale</option>
             </select>
           </label>
-          <table class="tabella" style="margin-top:6px;">
-            <thead><tr><th></th><th>Obiettivo</th><th>Importo</th></tr></thead>
-            <tbody>
-              ${obDelFondo.map((o) => {
-                const riga = righeCalcolate.find((x) => x.id === o.id);
-                const selezionato = r.divisione.obiettiviSelezionati.has(o.id);
-                return `
-                  <tr>
-                    <td><input type="checkbox" class="checkbox-obiettivo-ridistr" data-i="${i}" data-obiettivo-id="${o.id}" ${selezionato ? 'checked' : ''}></td>
-                    <td>${o.nome}</td>
-                    <td><input type="number" step="any" class="input-obiettivo-ridistr" data-i="${i}" data-obiettivo-id="${o.id}" value="${riga ? riga.importo : 0}" ${r.divisione.strategia !== 'manuale' || !selezionato ? 'disabled' : ''}></td>
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
+          <div class="lista-editabile" style="margin-top:6px;">
+            ${obDelFondo.map((o) => {
+              const riga = righeCalcolate.find((x) => x.id === o.id);
+              const selezionato = r.divisione.obiettiviSelezionati.has(o.id);
+              return `
+                <div class="riga-editabile">
+                  <span class="riga-editabile-checkbox"><input type="checkbox" class="checkbox-obiettivo-ridistr checkbox-quadrata" data-i="${i}" data-obiettivo-id="${o.id}" ${selezionato ? 'checked' : ''}></span>
+                  <span class="riga-editabile-nome">${o.nome}</span>
+                  <input type="number" step="any" class="input-obiettivo-ridistr" data-i="${i}" data-obiettivo-id="${o.id}" value="${riga ? riga.importo : 0}" ${r.divisione.strategia !== 'manuale' || !selezionato ? 'disabled' : ''}>
+                </div>
+              `;
+            }).join('')}
+          </div>
           <p class="nota-inline ${nonAssegnato < -0.005 ? 'testo-errore' : ''}">
             Assegnato agli Obiettivi: ${formattaValuta(totaleObiettivi)} / Quota del Fondo: ${formattaValuta(r.nuovo)} —
             resta al Fondo: ${formattaValuta(nonAssegnato)}${nonAssegnato < -0.005 ? ' (superi la quota del Fondo)' : ''}
@@ -1886,13 +1867,13 @@ function mostraFormRidistribuisciProspetto(zona, container, prospettoId, fondiAt
       }
     }
     return `
-      <div class="riga-obiettivo" style="border-bottom:1px solid var(--colore-bordo);">
+      <div class="riga-editabile" style="flex-direction:column; align-items:stretch;">
         <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-          <strong style="min-width:160px;">${r.nome}</strong>
-          <input type="number" step="any" data-i="${i}" class="input-nuovo-fondo-ridistr" value="${r.nuovo}" style="width:110px;">
-          ${obDelFondo.length > 0 ? `<button type="button" data-azione="espandi-fondo-ridistr" data-i="${i}" style="margin-left:auto;">${r.espanso ? 'Chiudi' : 'Obiettivi'}</button>` : ''}
+          <span class="riga-editabile-nome"><strong>${r.nome}</strong></span>
+          <input type="number" step="any" data-i="${i}" class="input-nuovo-fondo-ridistr" value="${r.nuovo}">
+          ${obDelFondo.length > 0 ? `<button type="button" data-azione="espandi-fondo-ridistr" data-i="${i}" class="riga-editabile-espandi">${r.espanso ? 'Chiudi' : 'Obiettivi'}</button>` : ''}
         </div>
-        ${r.espanso ? `<div style="margin-top:10px;">${blocchettoObiettivi}</div>` : ''}
+        ${r.espanso ? `<div class="riga-editabile-dettaglio">${blocchettoObiettivi}</div>` : ''}
       </div>
     `;
   }
@@ -2110,7 +2091,8 @@ async function renderConfronto(container, prospettiCompleti, mappaPiani) {
       <h3>Confronto Prospetti</h3>
 
       <h4>Conti (patrimonio previsto)</h4>
-      <table class="tabella">
+      <div class="scroll-orizzontale">
+      <table class="tabella tabella-compatta">
         <thead><tr><th>Conto</th>${intestazioni}</tr></thead>
         <tbody>
           ${conti.map((c) => `
@@ -2125,10 +2107,12 @@ async function renderConfronto(container, prospettiCompleti, mappaPiani) {
           `).join('')}
         </tbody>
       </table>
+      </div>
 
       <h4 style="margin-top:16px;">Fondi</h4>
       ${nomiFondi.size === 0 ? '<p class="nota">Nessun Fondo coinvolto nei Prospetti selezionati.</p>' : `
-        <table class="tabella">
+        <div class="scroll-orizzontale">
+        <table class="tabella tabella-compatta">
           <thead><tr><th>Fondo</th>${intestazioni}</tr></thead>
           <tbody>
             ${[...nomiFondi.entries()].map(([fondoId, nome]) => `
@@ -2143,11 +2127,13 @@ async function renderConfronto(container, prospettiCompleti, mappaPiani) {
             `).join('')}
           </tbody>
         </table>
+        </div>
       `}
 
       <h4 style="margin-top:16px;">Obiettivi (% completamento)</h4>
       ${nomiObiettivi.size === 0 ? '<p class="nota">Nessun Obiettivo coinvolto nei Prospetti selezionati.</p>' : `
-        <table class="tabella">
+        <div class="scroll-orizzontale">
+        <table class="tabella tabella-compatta">
           <thead><tr><th>Obiettivo</th>${intestazioni}</tr></thead>
           <tbody>
             ${[...nomiObiettivi.entries()].map(([obId, attuale]) => `
@@ -2164,11 +2150,13 @@ async function renderConfronto(container, prospettiCompleti, mappaPiani) {
             `).join('')}
           </tbody>
         </table>
+        </div>
       `}
 
       <h4 style="margin-top:16px;">Budget (totale impegnato)</h4>
       ${nomiBudget.size === 0 ? '<p class="nota">Nessun Budget stimato nei Prospetti selezionati.</p>' : `
-        <table class="tabella">
+        <div class="scroll-orizzontale">
+        <table class="tabella tabella-compatta">
           <thead><tr><th>Budget</th>${intestazioni}</tr></thead>
           <tbody>
             ${[...nomiBudget.entries()].map(([budgetId, nome]) => `
@@ -2183,10 +2171,12 @@ async function renderConfronto(container, prospettiCompleti, mappaPiani) {
             `).join('')}
           </tbody>
         </table>
+        </div>
       `}
 
       <h4 style="margin-top:16px;">Salute Finanziaria a fine Prospetto</h4>
-      <table class="tabella">
+      <div class="scroll-orizzontale">
+      <table class="tabella tabella-compatta">
         <thead><tr><th>Indicatore</th>${intestazioni}</tr></thead>
         <tbody>
           <tr>
@@ -2207,6 +2197,7 @@ async function renderConfronto(container, prospettiCompleti, mappaPiani) {
           </tr>
         </tbody>
       </table>
+      </div>
 
       ${risultati.some((r) => r.errore) ? `
         <p class="nota" style="margin-top:8px;">

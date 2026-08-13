@@ -2,11 +2,12 @@ import { elencoConti, creaConto, aggiornaConto, eliminaConto } from '../domain/c
 import { elencoFondiPerConto } from '../domain/fondi.js';
 import { elencoBudgetPerConto } from '../domain/budget.js';
 import { formattaValuta } from '../utils/formatCurrency.js';
-import { ordina, filtraTesto, intestazioneOrdinabile, collegaOrdinamento } from '../utils/listaUtils.js';
+import { ordina, filtraTesto, barraOrdinamentoHtml, collegaBarraOrdinamento } from '../utils/listaUtils.js';
 import { renderBarraTab } from '../utils/tabsUtils.js';
 import { renderFondi } from './viewFondi.js';
 import { renderBudget } from './viewBudget.js';
 import { mostraConferma } from '../utils/dialogUtils.js';
+import { apriModaleVista, chiudiModaleVista } from '../components/modaleVista.js';
 
 let contoInModifica = null;
 let tabFondiBudgetAttiva = 'fondi';
@@ -31,7 +32,6 @@ export async function renderConti(container) {
       </div>
       <div id="lista-conti"></div>
       <button id="btn-nuovo-conto" class="btn-primario"><i class="fa-solid fa-plus"></i> Nuovo Conto</button>
-      <div id="form-conto-container"></div>
     </section>
 
     <div class="sotto-sezione">
@@ -48,7 +48,7 @@ export async function renderConti(container) {
 
   container.querySelector('#btn-nuovo-conto').addEventListener('click', () => {
     contoInModifica = null;
-    mostraForm(container);
+    apriFormConto(container);
   });
 
   renderBarraTab(container.querySelector('#tab-fondi-budget'), {
@@ -74,38 +74,35 @@ function renderTabella(container, contiCompleti) {
 
   lista.innerHTML = conti.length === 0
     ? '<p class="nota">Nessun Conto trovato.</p>'
-    : `<table class="tabella">
-        <thead><tr>
-          ${intestazioneOrdinabile('Nome', 'nome', stato)}
-          ${intestazioneOrdinabile('Istituto', 'istituto', stato)}
-          ${intestazioneOrdinabile('Saldo', 'saldoReale', stato)}
-          ${intestazioneOrdinabile('Stato', 'stato', stato)}
-          <th></th>
-        </tr></thead>
-        <tbody>
-          ${conti.map((c) => `
-            <tr>
-              <td>${c.nome}</td>
-              <td>${c.istituto || '-'}</td>
-              <td class="numero">${formattaValuta(c.saldoReale, c.valuta)}</td>
-              <td>${c.stato}</td>
-              <td>
-                <div class="azioni-riga">
-                  <button class="btn-icona" title="Modifica" data-azione="modifica" data-id="${c.id}"><i class="fa-solid fa-pen"></i></button>
-                  <button class="btn-icona" title="Elimina" data-azione="elimina" data-id="${c.id}"><i class="fa-solid fa-trash"></i></button>
-                </div>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>`;
+    : barraOrdinamentoHtml([
+        { chiave: 'nome', etichetta: 'Nome' },
+        { chiave: 'istituto', etichetta: 'Istituto' },
+        { chiave: 'saldoReale', etichetta: 'Saldo' },
+        { chiave: 'stato', etichetta: 'Stato' }
+      ], stato, 'conti') + `
+      <div class="lista-metriche">
+        ${conti.map((c) => `
+          <div class="riga-metrica">
+            <span class="riga-metrica-nome">${c.nome}<span class="badge">${c.stato}</span></span>
+            <div class="riga-metrica-valori">
+              ${c.istituto ? `<span class="riga-metrica-valore"><span class="etichetta">Istituto</span><span class="numero" style="font-family:var(--font-corpo); font-weight:500;">${c.istituto}</span></span>` : ''}
+              <span class="riga-metrica-valore"><span class="etichetta">Saldo</span><span class="numero">${formattaValuta(c.saldoReale, c.valuta)}</span></span>
+            </div>
+            <div class="riga-metrica-azioni">
+              <button class="btn-icona" title="Modifica" data-azione="modifica" data-id="${c.id}"><i class="fa-solid fa-pen"></i></button>
+              <button class="btn-icona" title="Elimina" data-azione="elimina" data-id="${c.id}"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
 
-  collegaOrdinamento(lista, stato, () => renderTabella(container, contiCompleti));
+  collegaBarraOrdinamento(lista, stato, 'conti', () => renderTabella(container, contiCompleti));
 
   lista.querySelectorAll('button[data-azione="modifica"]').forEach((btn) => {
     btn.addEventListener('click', () => {
       contoInModifica = contiCompleti.find((c) => c.id === btn.dataset.id);
-      mostraForm(container);
+      apriFormConto(container);
     });
   });
 
@@ -136,59 +133,63 @@ function renderTabella(container, contiCompleti) {
   });
 }
 
-function mostraForm(container) {
-  const formContainer = container.querySelector('#form-conto-container');
+function apriFormConto(container) {
   const c = contoInModifica || {};
 
-  formContainer.innerHTML = `
-    <form id="form-conto" class="form-scheda">
-      <h3>${contoInModifica ? 'Modifica Conto' : 'Nuovo Conto'}</h3>
-      <label>Nome *<input name="nome" required value="${c.nome || ''}"></label>
-      <label>Istituto<input name="istituto" value="${c.istituto || ''}"></label>
-      <label>Descrizione<input name="descrizione" value="${c.descrizione || ''}"></label>
-      <label>Saldo reale *
-        <input name="saldoReale" type="number" step="any" required value="${c.saldoReale ?? 0}" ${contoInModifica ? 'disabled' : ''}>
-      </label>
-      ${contoInModifica ? '<p class="nota">Il saldo non è più modificabile qui: per correggerlo usa una Rettifica dal Registro Movimenti (lascia sempre traccia storica).</p>' : ''}
-      <label>Valuta<input name="valuta" value="${c.valuta || 'EUR'}"></label>
-      <label>Tipologia
-        <select name="tipologia">
-          <option value="risparmio" ${c.tipologia === 'spesa' ? '' : 'selected'}>Risparmio</option>
-          <option value="spesa" ${c.tipologia === 'spesa' ? 'selected' : ''}>Spesa</option>
-        </select>
-      </label>
-      ${c.tipologia === 'spesa' || !contoInModifica ? '<p class="nota">Un Conto "Spesa" non può avere un saldo diverso da zero.</p>' : ''}
-      <label>Ordinamento<input name="ordinamento" type="number" value="${c.ordinamento ?? 0}"></label>
-      <label class="riga-checkbox">
-        <input type="checkbox" name="inclusoProspettiDefault" ${c.inclusoProspettiDefault !== false ? 'checked' : ''}>
-        Incluso di default nei Prospetti
-      </label>
-      <div class="form-azioni">
-        <button type="submit" class="btn-primario">Salva</button>
-        <button type="button" id="btn-annulla-conto">Annulla</button>
-      </div>
-    </form>
-  `;
+  apriModaleVista({
+    titolo: contoInModifica ? 'Modifica Conto' : 'Nuovo Conto',
+    render: (corpo) => {
+      corpo.innerHTML = `
+        <form id="form-conto" class="form-scheda">
+          <label>Nome *<input name="nome" required value="${c.nome || ''}"></label>
+          <label>Istituto<input name="istituto" value="${c.istituto || ''}"></label>
+          <label>Descrizione<input name="descrizione" value="${c.descrizione || ''}"></label>
+          <label>Saldo reale *
+            <input name="saldoReale" type="number" step="any" required value="${c.saldoReale ?? 0}" ${contoInModifica ? 'disabled' : ''}>
+          </label>
+          ${contoInModifica ? '<p class="nota">Il saldo non è più modificabile qui: per correggerlo usa una Rettifica dal Registro Movimenti (lascia sempre traccia storica).</p>' : ''}
+          <label>Valuta<input name="valuta" value="${c.valuta || 'EUR'}"></label>
+          <label>Tipologia
+            <select name="tipologia">
+              <option value="risparmio" ${c.tipologia === 'spesa' ? '' : 'selected'}>Risparmio</option>
+              <option value="spesa" ${c.tipologia === 'spesa' ? 'selected' : ''}>Spesa</option>
+            </select>
+          </label>
+          ${c.tipologia === 'spesa' || !contoInModifica ? '<p class="nota">Un Conto "Spesa" non può avere un saldo diverso da zero.</p>' : ''}
+          <label>Ordinamento<input name="ordinamento" type="number" value="${c.ordinamento ?? 0}"></label>
+          <label class="riga-checkbox">
+            <input type="checkbox" name="inclusoProspettiDefault" ${c.inclusoProspettiDefault !== false ? 'checked' : ''}>
+            Incluso di default nei Prospetti
+          </label>
+          <div class="form-azioni">
+            <button type="submit" class="btn-primario">Salva</button>
+            <button type="button" id="btn-annulla-conto">Annulla</button>
+          </div>
+        </form>
+      `;
 
-  container.querySelector('#btn-annulla-conto').addEventListener('click', () => {
-    contoInModifica = null;
-    formContainer.innerHTML = '';
-  });
+      corpo.querySelector('#btn-annulla-conto').addEventListener('click', () => {
+        contoInModifica = null;
+        chiudiModaleVista();
+      });
 
-  container.querySelector('#form-conto').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const dati = Object.fromEntries(new FormData(e.target).entries());
-    dati.inclusoProspettiDefault = e.target.inclusoProspettiDefault.checked;
-    try {
-      if (contoInModifica) {
-        await aggiornaConto(contoInModifica.id, dati);
-      } else {
-        await creaConto(dati);
-      }
-      contoInModifica = null;
-      renderConti(container);
-    } catch (err) {
-      alert(err.message);
+      corpo.querySelector('#form-conto').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const dati = Object.fromEntries(new FormData(e.target).entries());
+        dati.inclusoProspettiDefault = e.target.inclusoProspettiDefault.checked;
+        try {
+          if (contoInModifica) {
+            await aggiornaConto(contoInModifica.id, dati);
+          } else {
+            await creaConto(dati);
+          }
+          contoInModifica = null;
+          chiudiModaleVista();
+          renderConti(container);
+        } catch (err) {
+          alert(err.message);
+        }
+      });
     }
   });
 }

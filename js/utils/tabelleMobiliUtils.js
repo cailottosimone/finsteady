@@ -1,6 +1,6 @@
 // js/utils/tabelleMobiliUtils.js
 //
-// Su schermi piccoli (css/style.css, blocco @media max-width:720px) le righe di tabella
+// Su schermi piccoli (css/components.css, blocco @media max-width:860px) le righe di tabella
 // diventano SCHEDE impilate verticalmente invece di scorrere in orizzontale: ogni cella mostra
 // la propria etichetta di colonna sopra il valore (":before { content: attr(data-label) }"),
 // perché l'intestazione <thead> in quella modalità è nascosta.
@@ -19,7 +19,7 @@
 // per un pannello di dettaglio.
 //
 // La prima cella con un'etichetta non vuota di ogni riga riceve anche la classe
-// 'cella-nome-riga' (css/style.css la mette in grassetto, solo in modalità scheda): è quasi
+// 'cella-nome-riga' (css/components.css la evidenzia, solo in modalità compatta): è quasi
 // sempre la colonna che identifica la riga (Nome, Conto, Descrizione...) — utile per distinguere
 // a colpo d'occhio dove finisce una scheda e comincia la successiva quando ce ne sono molte.
 

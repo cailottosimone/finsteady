@@ -3,8 +3,9 @@ import { elencoBudgetIdsCollegati } from '../domain/piano.js';
 import { elencoConti } from '../domain/conti.js';
 import { elencoCategorie } from '../domain/categorie.js';
 import { formattaValuta } from '../utils/formatCurrency.js';
-import { ordina, filtraTesto, intestazioneOrdinabile, collegaOrdinamento } from '../utils/listaUtils.js';
+import { ordina, filtraTesto, barraOrdinamentoHtml, collegaBarraOrdinamento } from '../utils/listaUtils.js';
 import { mostraConferma } from '../utils/dialogUtils.js';
+import { apriModaleVista, chiudiModaleVista } from '../components/modaleVista.js';
 
 let budgetInModifica = null;
 const stato = { ordineChiave: 'nome', ordineDecrescente: false, ricerca: '' };
@@ -26,7 +27,7 @@ export async function renderBudget(container) {
   });
 
   container.innerHTML = `
-    <section class="pannello" style="border-top: 3px solid var(--colore-operativita);">
+    <section class="pannello">
       <h2>Budget</h2>
       <p class="nota">
         Il Budget rappresenta la disponibilità operativa del ciclo corrente. Non ha un target,
@@ -70,43 +71,36 @@ function renderTabella(container, budgetCompleto, conti, categorie, budgetIdsCol
 
   lista.innerHTML = budget.length === 0
     ? '<p class="nota">Nessun Budget trovato.</p>'
-    : `<table class="tabella">
-        <thead><tr>
-          ${intestazioneOrdinabile('Nome', 'nome', stato)}
-          <th></th>
-          ${intestazioneOrdinabile('Conto', 'contoNome', stato)}
-          ${intestazioneOrdinabile('Categoria', 'categoriaNome', stato)}
-          ${intestazioneOrdinabile('Importo default', 'importoAssegnatoDefault', stato)}
-          <th></th>
-        </tr></thead>
-        <tbody>
-          ${budget.map((b) => {
-            const collegato = budgetIdsCollegati.has(b.id);
-            const attivo = !b.stato || b.stato === 'attivo';
-            let badge;
-            if (!collegato) badge = '<span class="badge" style="background:#fff; border:1px dashed var(--colore-bordo-forte);">Scollegato</span>';
-            else if (attivo) badge = '<span class="badge badge-ok">Attivo</span>';
-            else badge = '<span class="badge" style="background:#eee;">Inattivo</span>';
-            return `
-            <tr>
-              <td>${b.nome}</td>
-              <td>${badge}</td>
-              <td>${b._contoNome || '-'}</td>
-              <td>${b._categoriaNome || '-'}</td>
-              <td class="numero">${formattaValuta(b.importoAssegnatoDefault)}</td>
-              <td>
-                <div class="azioni-riga">
-                  <button class="btn-icona" title="Modifica" data-azione="modifica" data-id="${b.id}"><i class="fa-solid fa-pen"></i></button>
-                  <button class="btn-icona" title="Elimina" data-azione="elimina" data-id="${b.id}"><i class="fa-solid fa-trash"></i></button>
-                </div>
-              </td>
-            </tr>
+    : barraOrdinamentoHtml([
+        { chiave: 'nome', etichetta: 'Nome' },
+        { chiave: 'contoNome', etichetta: 'Conto' },
+        { chiave: 'categoriaNome', etichetta: 'Categoria' },
+        { chiave: 'importoAssegnatoDefault', etichetta: 'Importo default' }
+      ], stato, 'budget') + `
+      <div class="lista-metriche">
+        ${budget.map((b) => {
+          const collegato = budgetIdsCollegati.has(b.id);
+          const attivo = !b.stato || b.stato === 'attivo';
+          let badge;
+          if (!collegato) badge = '<span class="badge">Scollegato</span>';
+          else if (attivo) badge = '<span class="badge badge-ok">Attivo</span>';
+          else badge = '<span class="badge">Inattivo</span>';
+          return `
+            <div class="riga-metrica">
+              <span class="riga-metrica-nome">${b.nome} ${badge}<span class="riga-metrica-sotto">${b._contoNome || '-'}${b._categoriaNome ? ` · ${b._categoriaNome}` : ''}</span></span>
+              <div class="riga-metrica-valori">
+                <span class="riga-metrica-valore"><span class="etichetta">Importo default</span><span class="numero">${formattaValuta(b.importoAssegnatoDefault)}</span></span>
+              </div>
+              <div class="riga-metrica-azioni">
+                <button class="btn-icona" title="Modifica" data-azione="modifica" data-id="${b.id}"><i class="fa-solid fa-pen"></i></button>
+                <button class="btn-icona" title="Elimina" data-azione="elimina" data-id="${b.id}"><i class="fa-solid fa-trash"></i></button>
+              </div>
+            </div>
           `;
-          }).join('')}
-        </tbody>
-      </table>`;
+        }).join('')}
+      </div>`;
 
-  collegaOrdinamento(lista, stato, () => renderTabella(container, budgetCompleto, conti, categorie, budgetIdsCollegati));
+  collegaBarraOrdinamento(lista, stato, 'budget', () => renderTabella(container, budgetCompleto, conti, categorie, budgetIdsCollegati));
 
   lista.querySelectorAll('button[data-azione="modifica"]').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -158,12 +152,12 @@ function renderTabella(container, budgetCompleto, conti, categorie, budgetIdsCol
 }
 
 function mostraForm(container, conti, categorie) {
-  const formContainer = container.querySelector('#form-budget-container');
   const b = budgetInModifica || {};
 
-  formContainer.innerHTML = `
+  apriModaleVista({
+    titolo: budgetInModifica ? 'Modifica Budget' : 'Nuovo Budget',
+    render: (formContainer) => { formContainer.innerHTML = `
     <form id="form-budget" class="form-scheda">
-      <h3>${budgetInModifica ? 'Modifica Budget' : 'Nuovo Budget'}</h3>
       <label>Nome *<input name="nome" required value="${b.nome || ''}"></label>
       <label>Conto di appartenenza *
         <select name="contoId" required>
@@ -193,12 +187,12 @@ function mostraForm(container, conti, categorie) {
     </form>
   `;
 
-  container.querySelector('#btn-annulla-budget').addEventListener('click', () => {
+  formContainer.querySelector('#btn-annulla-budget').addEventListener('click', () => {
     budgetInModifica = null;
-    formContainer.innerHTML = '';
+    chiudiModaleVista();
   });
 
-  container.querySelector('#form-budget').addEventListener('submit', async (e) => {
+  formContainer.querySelector('#form-budget').addEventListener('submit', async (e) => {
     e.preventDefault();
     const dati = Object.fromEntries(new FormData(e.target).entries());
     dati.inclusoProspettiDefault = e.target.inclusoProspettiDefault.checked;
@@ -210,9 +204,11 @@ function mostraForm(container, conti, categorie) {
         await creaBudget(dati);
       }
       budgetInModifica = null;
+      chiudiModaleVista();
       renderBudget(container);
     } catch (err) {
       alert(err.message);
     }
+  }); }
   });
 }

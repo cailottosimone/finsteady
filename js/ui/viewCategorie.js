@@ -1,5 +1,5 @@
 import { elencoCategorie, creaCategoria, aggiornaCategoria, eliminaCategoria } from '../domain/categorie.js';
-import { ordina, filtraTesto, intestazioneOrdinabile, collegaOrdinamento } from '../utils/listaUtils.js';
+import { ordina, filtraTesto, barraOrdinamentoHtml, collegaBarraOrdinamento } from '../utils/listaUtils.js';
 import { mostraConferma } from '../utils/dialogUtils.js';
 
 let categoriaInModifica = null;
@@ -69,29 +69,26 @@ function renderTabellaCategorie(el, categorieComplete, stato, container) {
 
   el.innerHTML = categorie.length === 0
     ? '<p class="nota">Nessuna Categoria trovata.</p>'
-    : `<table class="tabella tabella-compatta">
-        <thead><tr>
-          ${intestazioneOrdinabile('Nome', 'nome', stato)}
-          ${intestazioneOrdinabile('Ordinamento', 'ordinamento', stato)}
-          <th></th>
-        </tr></thead>
-        <tbody>
-          ${categorie.map((c) => `
-            <tr>
-              <td>${c.nome}</td>
-              <td class="numero">${c.ordinamento ?? 0}</td>
-              <td>
-                <div class="azioni-riga">
-                  <button class="btn-icona" title="Modifica" data-azione="modifica" data-id="${c.id}"><i class="fa-solid fa-pen"></i></button>
-                  <button class="btn-icona" title="Elimina" data-azione="elimina" data-id="${c.id}"><i class="fa-solid fa-trash"></i></button>
-                </div>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>`;
+    : barraOrdinamentoHtml([
+        { chiave: 'nome', etichetta: 'Nome' },
+        { chiave: 'ordinamento', etichetta: 'Ordinamento' }
+      ], stato, `cat-${stato === statoObiettivo ? 'obiettivo' : 'budget'}`) + `
+      <div class="lista-azioni-elenco">
+        ${categorie.map((c) => `
+          <div class="riga-elenco-azioni">
+            <div class="riga-elenco-azioni-testata">
+              <span class="riga-elenco-azioni-titolo">${c.nome}</span>
+              <span class="badge">#${c.ordinamento ?? 0}</span>
+            </div>
+            <div class="riga-elenco-azioni-azioni azioni-riga">
+              <button class="btn-icona" title="Modifica" data-azione="modifica" data-id="${c.id}"><i class="fa-solid fa-pen"></i></button>
+              <button class="btn-icona" title="Elimina" data-azione="elimina" data-id="${c.id}"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </div>
+        `).join('')}
+      </div>`;
 
-  collegaOrdinamento(el, stato, () => renderTabellaCategorie(el, categorieComplete, stato, container));
+  collegaBarraOrdinamento(el, stato, `cat-${stato === statoObiettivo ? 'obiettivo' : 'budget'}`, () => renderTabellaCategorie(el, categorieComplete, stato, container));
 
   el.querySelectorAll('button[data-azione="modifica"]').forEach((btn) => {
     btn.addEventListener('click', () => {

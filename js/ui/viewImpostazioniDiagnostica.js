@@ -30,43 +30,37 @@ export async function renderImpostazioniDiagnostica(container) {
       : `${problemi.map((p) => `<p class="badge badge-errore">⚠️ [${p.categoria}] ${p.messaggio}</p>`).join('')}
          <button id="btn-ripara-orfani">Ripara automaticamente</button>
          <p class="nota-inline">Elimina i movimenti e gli Storni ormai orfani (riferiti a Conti/Fondi/Obiettivi eliminati). Non tocca movimenti validi.</p>`}
-    <table class="tabella-integrita">
-      <thead>
-        <tr><th>Conto</th><th>Saldo reale</th><th>Fondi collegati</th><th>Liquidità non allocata</th></tr>
-      </thead>
-      <tbody>
-        ${verifiche.map((v) => `
-          <tr>
-            <td>${v.conto.nome}</td>
-            <td class="numero">${formattaValuta(v.conto.saldoReale)}</td>
-            <td class="numero">${formattaValuta(v.totaleFondi)}</td>
-            <td class="numero ${v.coerente ? '' : 'testo-errore'}">${formattaValuta(v.liquiditaNonAllocata)}</td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-
-    ${verificheConMovimento.length > 0 ? `
-      <div class="equazione-patrimoniale">
-        ${verificheConMovimento.map((v) => {
-          const saldo = Number(v.conto.saldoReale) || 0;
-          const totale = Math.max(saldo, v.totaleFondi, 0.01);
-          const pctFondi = Math.max(0, Math.min(100, (v.totaleFondi / totale) * 100));
-          const pctLibera = Math.max(0, 100 - pctFondi);
-          return `
-            <p class="nota" style="margin-bottom:4px;"><strong>${v.conto.nome}</strong> — Conto = Fondi + Liquidità</p>
-            <div class="equazione-barra">
-              <div class="equazione-segmento fondi" style="width:${pctFondi}%"></div>
-              <div class="equazione-segmento libera" style="width:${pctLibera}%"></div>
+    <div class="lista-metriche">
+      ${verifiche.map((v) => {
+        const saldo = Number(v.conto.saldoReale) || 0;
+        const haMovimento = Math.abs(saldo) > 0.005 || Math.abs(v.totaleFondi) > 0.005;
+        const totale = Math.max(saldo, v.totaleFondi, 0.01);
+        const pctFondi = Math.max(0, Math.min(100, (v.totaleFondi / totale) * 100));
+        const pctLibera = Math.max(0, 100 - pctFondi);
+        return `
+          <div class="riga-metrica" style="flex-wrap:wrap;">
+            <span class="riga-metrica-nome">${v.conto.nome}</span>
+            <div class="riga-metrica-valori">
+              <span class="riga-metrica-valore"><span class="etichetta">Saldo reale</span><span class="numero">${formattaValuta(v.conto.saldoReale)}</span></span>
+              <span class="riga-metrica-valore"><span class="etichetta">Fondi collegati</span><span class="numero">${formattaValuta(v.totaleFondi)}</span></span>
+              <span class="riga-metrica-valore"><span class="etichetta">Liquidità non allocata</span><span class="numero ${v.coerente ? '' : 'negativo'}">${formattaValuta(v.liquiditaNonAllocata)}</span></span>
             </div>
-            <div class="equazione-legenda">
-              <span class="equazione-voce"><span class="equazione-pallino fondi"></span>Fondi ${formattaValuta(v.totaleFondi)}</span>
-              <span class="equazione-voce"><span class="equazione-pallino libera"></span>Liquidità ${formattaValuta(v.liquiditaNonAllocata)}</span>
-            </div>
-          `;
-        }).join('<div style="height:16px;"></div>')}
-      </div>
-    ` : ''}
+            ${haMovimento ? `
+              <div class="equazione-patrimoniale" style="flex:1 1 100%; margin:8px 0 0;">
+                <div class="equazione-barra">
+                  <div class="equazione-segmento fondi" style="width:${pctFondi}%"></div>
+                  <div class="equazione-segmento libera" style="width:${pctLibera}%"></div>
+                </div>
+                <div class="equazione-legenda">
+                  <span class="equazione-voce"><span class="equazione-pallino fondi"></span>Fondi</span>
+                  <span class="equazione-voce"><span class="equazione-pallino libera"></span>Liquidità</span>
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('')}
+    </div>
   `;
 
   const btnRipara = container.querySelector('#btn-ripara-orfani');

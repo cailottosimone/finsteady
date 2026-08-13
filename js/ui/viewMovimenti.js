@@ -29,7 +29,7 @@ import { elencoObiettivi } from '../domain/obiettivi.js';
 import { elencoTuttiGliAllegati, eliminaAllegato } from '../domain/allegati.js';
 import { formattaValuta } from '../utils/formatCurrency.js';
 import { formattaDataOra } from '../utils/dateUtils.js';
-import { ordina, filtraTesto, intestazioneOrdinabile, collegaOrdinamento } from '../utils/listaUtils.js';
+import { ordina, filtraTesto } from '../utils/listaUtils.js';
 import { mostraConferma } from '../utils/dialogUtils.js';
 
 // Stato di ordinamento/ricerca/selezione/espansione, persiste per la sessione.
@@ -363,9 +363,19 @@ const CHIAVI_ORDINAMENTO = {
   importo: (r) => r.importo
 };
 
+const ICONE_TIPO = {
+  Entrata: { icona: 'fa-plus', classe: 'tipo-entrata' },
+  Uscita: { icona: 'fa-minus', classe: 'tipo-uscita' },
+  Trasferimento: { icona: 'fa-exchange-alt', classe: 'tipo-trasferimento' },
+  Rettifica: { icona: 'fa-pen', classe: 'tipo-rettifica' }
+};
+
+const ETICHETTE_ORDINAMENTO = { data: 'Data', contoNome: 'Conto', importo: 'Importo' };
+
+
 function rigaAzioniHtml(r) {
   return `
-    <div class="azioni-riga">
+    <div class="riga-movimento-azioni">
       ${r.stornabile ? `<button class="btn-icona" title="Storna" data-tipo-azione="storna" data-tipo="${r.tipoAzione}" data-id="${r.idAzione}" data-riga-id="${r.id}"><i class="fa-solid fa-redo"></i></button>` : ''}
       <button class="btn-icona" title="Elimina definitivamente (senza storno)" data-tipo-azione="elimina" data-tipo="${r.tipoAzione}" data-id="${r.idAzione}" data-riga-id="${r.id}"><i class="fa-solid fa-trash"></i></button>
     </div>
@@ -374,60 +384,79 @@ function rigaAzioniHtml(r) {
 
 function rigaGruppoHtml(r) {
   const espanso = stato.espansi.has(r.idAzione);
-  const badgeStornato = r.stornato ? ' <span class="badge" style="background:#eee;">Stornato</span>' : '';
+  const badgeStornato = r.stornato ? ' <span class="badge">Stornato</span>' : '';
+  const ic = ICONE_TIPO[r.tipo] || { icona: 'fa-circle', classe: '' };
   const rigaPrincipale = `
-    <tr class="riga-gruppo-entrata">
-      <td></td>
-      <td>${formattaDataOra(r.data)}</td>
-      <td>${r.tipo}${badgeStornato}</td>
-      <td class="colonna-descrizione">
-        <button class="btn-icona" title="${espanso ? 'Comprimi' : 'Espandi'}" data-tipo-azione="espandi" data-id="${r.idAzione}">
-          <i class="fa-solid ${espanso ? 'fa-chevron-down' : 'fa-chevron-right'}"></i>
-        </button>
-        ${r.descrizione || '<i class="fa-solid fa-question-circle"></i>'} <span class="nota">(${r.numRighe} voci)</span>
-        ${(r.allegati && r.allegati.length > 0) ? r.allegati.map((a) => `<button class="btn-icona" title="Vedi allegato${a.nomeFile ? ': ' + a.nomeFile : ''}" data-azione="vedi-allegato" data-id="${a.id}"><i class="fa-solid fa-paperclip"></i></button>`).join('') : ''}
-      </td>
-      <td>${r.contoNome || 'Conto eliminato'}</td>
-      <td class="numero">${formattaValuta(r.importo)}</td>
-      <td>
-        <div class="azioni-riga">
-          ${r.numStornabili > 0 ? `<button class="btn-icona" title="Storna tutta l'Entrata (${r.numStornabili} voci)" data-tipo-azione="storna-tutto" data-id="${r.idAzione}"><i class="fa-solid fa-rotate-left"></i></button>` : ''}
+    <div class="riga-movimento">
+      <span class="riga-movimento-icona ${ic.classe}"><i class="fa-solid ${ic.icona}"></i></span>
+      <div class="riga-movimento-corpo">
+        <div class="riga-movimento-principale">
+          <span class="riga-movimento-descrizione">
+            <button class="btn-icona" title="${espanso ? 'Comprimi' : 'Espandi'}" data-tipo-azione="espandi" data-id="${r.idAzione}">
+              <i class="fa-solid ${espanso ? 'fa-chevron-down' : 'fa-chevron-right'}"></i>
+            </button>
+            ${r.descrizione || '<i class="fa-solid fa-question-circle"></i>'}
+          </span>
+          <span class="riga-movimento-importo">${formattaValuta(r.importo)}</span>
         </div>
-      </td>
-    </tr>
+        <div class="riga-movimento-meta">
+          <span>${formattaDataOra(r.data)}</span>
+          <span>· ${r.contoNome || 'Conto eliminato'}</span>
+          <span>· ${r.numRighe} voci</span>
+          ${badgeStornato}
+          ${(r.allegati && r.allegati.length > 0) ? r.allegati.map((a) => `<button class="btn-icona" title="Vedi allegato${a.nomeFile ? ': ' + a.nomeFile : ''}" data-azione="vedi-allegato" data-id="${a.id}"><i class="fa-solid fa-paperclip"></i></button>`).join('') : ''}
+          ${r.numStornabili > 0 ? `<span class="riga-movimento-azioni"><button class="btn-icona" title="Storna tutta l'Entrata (${r.numStornabili} voci)" data-tipo-azione="storna-tutto" data-id="${r.idAzione}"><i class="fa-solid fa-rotate-left"></i></button></span>` : ''}
+        </div>
+      </div>
+    </div>
   `;
   if (!espanso) return rigaPrincipale;
 
   const righeFiglieHtml = r.righeFiglie.map((f) => `
-    <tr class="riga-figlia-entrata">
-      <td><input type="checkbox" class="checkbox-riga" data-id="${f.id}" ${stato.selezionati.has(f.id) ? 'checked' : ''}></td>
-      <td></td>
-      <td></td>
-      <td style="padding-left:28px;" class="colonna-descrizione">↳ ${f.descrizione || '<i class="fa-solid fa-question-circle"></i>'}${f.stornato ? ' <span class="badge" style="background:#eee;">Stornato</span>' : ''}</td>
-      <td>${f.contoNome || 'Conto eliminato'}</td>
-      <td class="numero">${formattaValuta(f.importo)}</td>
-      <td>${rigaAzioniHtml(f)}</td>
-    </tr>
+    <div class="riga-movimento riga-movimento-figlia">
+      <span class="riga-movimento-checkbox"><input type="checkbox" class="checkbox-riga" data-id="${f.id}" ${stato.selezionati.has(f.id) ? 'checked' : ''}></span>
+      <div class="riga-movimento-corpo">
+        <div class="riga-movimento-principale">
+          <span class="riga-movimento-descrizione">↳ ${f.descrizione || '<i class="fa-solid fa-question-circle"></i>'}</span>
+          <span class="riga-movimento-importo">${formattaValuta(f.importo)}</span>
+        </div>
+        <div class="riga-movimento-meta">
+          <span>${f.contoNome || 'Conto eliminato'}</span>
+          ${f.stornato ? '<span class="badge">Stornato</span>' : ''}
+          ${rigaAzioniHtml(f)}
+        </div>
+      </div>
+    </div>
   `).join('');
 
   return rigaPrincipale + righeFiglieHtml;
 }
 
 function rigaSempliceHtml(r) {
+  const ic = ICONE_TIPO[r.tipo] || { icona: 'fa-circle', classe: '' };
+  const badgeCausale = r.causaleCiclo === 'avanzo' ? '<span class="badge" style="color:var(--colore-patrimonio);">AVANZO</span>'
+    : r.causaleCiclo === 'sforamento' ? '<span class="badge" style="color:var(--colore-avviso);">SFORAMENTO</span>'
+    : '';
   return `
-    <tr>
-      <td><input type="checkbox" class="checkbox-riga" data-id="${r.id}" ${stato.selezionati.has(r.id) ? 'checked' : ''}></td>
-      <td>${formattaDataOra(r.data)}</td>
-      <td>${r.tipo}${r.stornato ? ' <span class="badge" style="background:#eee;">Stornato</span>' : ''}${
-        r.causaleCiclo === 'avanzo' ? ` <span class="badge" style="background:var(--colore-patrimonio-soft);color:var(--colore-patrimonio);">AVANZO</span>`
-        : r.causaleCiclo === 'sforamento' ? ` <span class="badge" style="background:var(--colore-avviso-soft);color:var(--colore-avviso);">SFORAMENTO</span>`
-        : ''
-      }</td>
-      <td class="colonna-descrizione">${r.descrizione || '<i class="fa-solid fa-question-circle"></i>'}${(r.allegati && r.allegati.length > 0) ? r.allegati.map((a) => `<button class="btn-icona" title="Vedi allegato${a.nomeFile ? ': ' + a.nomeFile : ''}" data-azione="vedi-allegato" data-id="${a.id}"><i class="fa-solid fa-paperclip"></i></button>`).join('') : ''}</td>
-      <td>${r.contoNome || 'Conto eliminato'}</td>
-      <td class="numero ${r.importo < 0 ? 'testo-errore' : ''}">${formattaValuta(r.importo)}</td>
-      <td>${rigaAzioniHtml(r)}</td>
-    </tr>
+    <div class="riga-movimento">
+      <span class="riga-movimento-checkbox"><input type="checkbox" class="checkbox-riga" data-id="${r.id}" ${stato.selezionati.has(r.id) ? 'checked' : ''}></span>
+      <span class="riga-movimento-icona ${ic.classe}"><i class="fa-solid ${ic.icona}"></i></span>
+      <div class="riga-movimento-corpo">
+        <div class="riga-movimento-principale">
+          <span class="riga-movimento-descrizione">${r.descrizione || '<i class="fa-solid fa-question-circle"></i>'}</span>
+          <span class="riga-movimento-importo ${r.importo < 0 ? 'negativo' : ''}">${formattaValuta(r.importo)}</span>
+        </div>
+        <div class="riga-movimento-meta">
+          <span>${formattaDataOra(r.data)}</span>
+          <span>· ${r.tipo}</span>
+          <span>· ${r.contoNome || 'Conto eliminato'}</span>
+          ${r.stornato ? '<span class="badge">Stornato</span>' : ''}
+          ${badgeCausale}
+          ${(r.allegati && r.allegati.length > 0) ? r.allegati.map((a) => `<button class="btn-icona" title="Vedi allegato${a.nomeFile ? ': ' + a.nomeFile : ''}" data-azione="vedi-allegato" data-id="${a.id}"><i class="fa-solid fa-paperclip"></i></button>`).join('') : ''}
+          ${rigaAzioniHtml(r)}
+        </div>
+      </div>
+    </div>
   `;
 }
 
@@ -445,25 +474,36 @@ function renderTabella(container, righeVisualizzate, righePiatte) {
   const tutteSelezionate = righeSelezionabili.length > 0 && righeSelezionabili.every((r) => stato.selezionati.has(r.id));
 
   zona.innerHTML = righe.length === 0 ? '<p class="nota">Nessun movimento trovato.</p>' : `
-    <table class="tabella">
-      <thead>
-        <tr>
-          <th><input type="checkbox" id="checkbox-tutti" ${tutteSelezionate ? 'checked' : ''}></th>
-          ${intestazioneOrdinabile('Data', 'data', stato)}
-          <th>Tipo</th>
-          <th>Descrizione</th>
-          ${intestazioneOrdinabile('Conto di destinazione', 'contoNome', stato)}
-          ${intestazioneOrdinabile('Importo', 'importo', stato)}
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        ${righe.map((r) => (r.gruppo ? rigaGruppoHtml(r) : rigaSempliceHtml(r))).join('')}
-      </tbody>
-    </table>
+    <div class="barra-strumenti-movimenti">
+      <label class="nota-inline"><input type="checkbox" id="checkbox-tutti" class="checkbox-quadrata" ${tutteSelezionate ? 'checked' : ''}> Seleziona tutti</label>
+      <label class="nota-inline">Ordina per
+        <select id="select-ordina-movimenti">
+          ${Object.entries(ETICHETTE_ORDINAMENTO).map(([chiave, etichetta]) => `<option value="${chiave}" ${stato.ordineChiave === chiave ? 'selected' : ''}>${etichetta}</option>`).join('')}
+        </select>
+      </label>
+      <button type="button" id="btn-direzione-ordina-movimenti" class="btn-icona" title="${stato.ordineDecrescente ? 'Decrescente' : 'Crescente'}">
+        <i class="fa-solid ${stato.ordineDecrescente ? 'fa-arrow-down-wide-short' : 'fa-arrow-up-wide-short'}"></i>
+      </button>
+    </div>
+    <div class="lista-movimenti">
+      ${righe.map((r) => (r.gruppo ? rigaGruppoHtml(r) : rigaSempliceHtml(r))).join('')}
+    </div>
   `;
 
-  collegaOrdinamento(zona, stato, () => renderTabella(container, righeVisualizzate, righePiatte));
+  const selectOrdina = zona.querySelector('#select-ordina-movimenti');
+  if (selectOrdina) {
+    selectOrdina.addEventListener('change', (e) => {
+      stato.ordineChiave = e.target.value;
+      renderTabella(container, righeVisualizzate, righePiatte);
+    });
+  }
+  const btnDirezione = zona.querySelector('#btn-direzione-ordina-movimenti');
+  if (btnDirezione) {
+    btnDirezione.addEventListener('click', () => {
+      stato.ordineDecrescente = !stato.ordineDecrescente;
+      renderTabella(container, righeVisualizzate, righePiatte);
+    });
+  }
 
   const checkboxTutti = zona.querySelector('#checkbox-tutti');
   if (checkboxTutti) {
