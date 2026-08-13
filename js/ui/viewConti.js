@@ -2,7 +2,7 @@ import { elencoConti, creaConto, aggiornaConto, eliminaConto } from '../domain/c
 import { elencoFondiPerConto } from '../domain/fondi.js';
 import { elencoBudgetPerConto } from '../domain/budget.js';
 import { formattaValuta } from '../utils/formatCurrency.js';
-import { ordina, filtraTesto, intestazioneOrdinabile, collegaOrdinamento } from '../utils/listaUtils.js';
+import { ordina, filtraTesto, barraOrdinamentoHtml, collegaBarraOrdinamento } from '../utils/listaUtils.js';
 import { renderBarraTab } from '../utils/tabsUtils.js';
 import { renderFondi } from './viewFondi.js';
 import { renderBudget } from './viewBudget.js';
@@ -74,33 +74,30 @@ function renderTabella(container, contiCompleti) {
 
   lista.innerHTML = conti.length === 0
     ? '<p class="nota">Nessun Conto trovato.</p>'
-    : `<table class="tabella">
-        <thead><tr>
-          ${intestazioneOrdinabile('Nome', 'nome', stato)}
-          ${intestazioneOrdinabile('Istituto', 'istituto', stato)}
-          ${intestazioneOrdinabile('Saldo', 'saldoReale', stato)}
-          ${intestazioneOrdinabile('Stato', 'stato', stato)}
-          <th></th>
-        </tr></thead>
-        <tbody>
-          ${conti.map((c) => `
-            <tr>
-              <td class="cella-nome-riga">${c.nome}</td>
-              <td>${c.istituto || '-'}</td>
-              <td class="numero">${formattaValuta(c.saldoReale, c.valuta)}</td>
-              <td>${c.stato}</td>
-              <td>
-                <div class="azioni-riga">
-                  <button class="btn-icona" title="Modifica" data-azione="modifica" data-id="${c.id}"><i class="fa-solid fa-pen"></i></button>
-                  <button class="btn-icona" title="Elimina" data-azione="elimina" data-id="${c.id}"><i class="fa-solid fa-trash"></i></button>
-                </div>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>`;
+    : barraOrdinamentoHtml([
+        { chiave: 'nome', etichetta: 'Nome' },
+        { chiave: 'istituto', etichetta: 'Istituto' },
+        { chiave: 'saldoReale', etichetta: 'Saldo' },
+        { chiave: 'stato', etichetta: 'Stato' }
+      ], stato, 'conti') + `
+      <div class="lista-metriche">
+        ${conti.map((c) => `
+          <div class="riga-metrica">
+            <span class="riga-metrica-nome">${c.nome}<span class="badge">${c.stato}</span></span>
+            <div class="riga-metrica-valori">
+              ${c.istituto ? `<span class="riga-metrica-valore"><span class="etichetta">Istituto</span><span class="numero" style="font-family:var(--font-corpo); font-weight:500;">${c.istituto}</span></span>` : ''}
+              <span class="riga-metrica-valore"><span class="etichetta">Saldo</span><span class="numero">${formattaValuta(c.saldoReale, c.valuta)}</span></span>
+            </div>
+            <div class="riga-metrica-azioni">
+              <button class="btn-icona" title="Modifica" data-azione="modifica" data-id="${c.id}"><i class="fa-solid fa-pen"></i></button>
+              <button class="btn-icona" title="Elimina" data-azione="elimina" data-id="${c.id}"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
 
-  collegaOrdinamento(lista, stato, () => renderTabella(container, contiCompleti));
+  collegaBarraOrdinamento(lista, stato, 'conti', () => renderTabella(container, contiCompleti));
 
   lista.querySelectorAll('button[data-azione="modifica"]').forEach((btn) => {
     btn.addEventListener('click', () => {

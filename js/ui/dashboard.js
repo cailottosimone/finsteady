@@ -144,42 +144,42 @@ export async function renderDashboard(container) {
         Integrità Patrimoniale qui sopra.
       </p>
       ${budgetPerConto.size === 0 ? '<p class="nota">Nessun Budget definito.</p>' : `
-        <table class="tabella">
-          <thead><tr><th>Conto</th><th>Totale Budget attivo</th><th></th></tr></thead>
-          <tbody>
-            ${conti.filter((c) => budgetPerConto.has(c.id)).map((c) => {
-              const lista = budgetPerConto.get(c.id);
-              const totale = lista.filter((b) => !b.stato || b.stato === 'attivo').reduce((s, b) => s + (Number(b.importoAssegnatoDefault) || 0), 0);
-              const espanso = contoBudgetEspansoId === c.id;
-              return `
-                <tr>
-                  <td>${c.nome}</td>
-                  <td class="numero">${formattaValuta(totale)}</td>
-                  <td><button class="btn-icona" title="${espanso ? 'Chiudi' : 'Dettaglio'}" data-azione="espandi-budget-conto" data-id="${c.id}">${espanso ? '<i class="fa-solid fa-chevron-up"></i>' : '<i class="fa-solid fa-chevron-down"></i>'}</button></td>
-                </tr>
+        <div class="lista-metriche">
+          ${conti.filter((c) => budgetPerConto.has(c.id)).map((c) => {
+            const lista = budgetPerConto.get(c.id);
+            const totale = lista.filter((b) => !b.stato || b.stato === 'attivo').reduce((s, b) => s + (Number(b.importoAssegnatoDefault) || 0), 0);
+            const espanso = contoBudgetEspansoId === c.id;
+            return `
+              <div class="riga-metrica">
+                <span class="riga-metrica-nome">${c.nome}</span>
+                <div class="riga-metrica-valori">
+                  <span class="riga-metrica-valore"><span class="etichetta">Budget attivo</span><span class="numero">${formattaValuta(totale)}</span></span>
+                </div>
+                <div class="riga-metrica-azioni">
+                  <button class="btn-icona" title="${espanso ? 'Chiudi' : 'Dettaglio'}" data-azione="espandi-budget-conto" data-id="${c.id}">${espanso ? '<i class="fa-solid fa-chevron-up"></i>' : '<i class="fa-solid fa-chevron-down"></i>'}</button>
+                </div>
                 ${espanso ? `
-                  <tr>
-                    <td colspan="3">
-                      <div class="elenco-dettaglio-annidato">
-                        ${lista.map((b) => `
-                          <div class="elenco-dettaglio-annidato-riga">
-                            <span>${b.nome} ${!budgetIdsCollegati.has(b.id) ? '<span class="badge">Scollegato</span>' : (b.stato === 'inattivo' ? '<span class="badge">Inattivo</span>' : '')}</span>
-                            <span class="numero">${formattaValuta(b.importoAssegnatoDefault)}</span>
-                          </div>
-                        `).join('')}
-                      </div>
-                    </td>
-                  </tr>
+                  <div class="riga-elenco-azioni-dettaglio" style="flex:1 1 100%;">
+                    <div class="elenco-dettaglio-annidato">
+                      ${lista.map((b) => `
+                        <div class="elenco-dettaglio-annidato-riga">
+                          <span>${b.nome} ${!budgetIdsCollegati.has(b.id) ? '<span class="badge">Scollegato</span>' : (b.stato === 'inattivo' ? '<span class="badge">Inattivo</span>' : '')}</span>
+                          <span class="numero">${formattaValuta(b.importoAssegnatoDefault)}</span>
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
                 ` : ''}
-              `;
-            }).join('')}
-            <tr class="totale">
-              <td>Totale generale</td>
-              <td class="numero">${formattaValuta(budgetAssegnatoTotale)}</td>
-              <td></td>
-            </tr>
-          </tbody>
-        </table>
+              </div>
+            `;
+          }).join('')}
+          <div class="riga-metrica totale">
+            <span class="riga-metrica-nome">Totale generale</span>
+            <div class="riga-metrica-valori">
+              <span class="riga-metrica-valore"><span class="numero">${formattaValuta(budgetAssegnatoTotale)}</span></span>
+            </div>
+          </div>
+        </div>
       `}
     </section>
   `;

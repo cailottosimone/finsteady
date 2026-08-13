@@ -12,7 +12,7 @@ import {
 } from '../domain/budgetCicli.js';
 import { formattaValuta } from '../utils/formatCurrency.js';
 import { formattaData } from '../utils/dateUtils.js';
-import { ordina, filtraTesto, intestazioneOrdinabile, collegaOrdinamento } from '../utils/listaUtils.js';
+import { ordina, filtraTesto, barraOrdinamentoHtml, collegaBarraOrdinamento } from '../utils/listaUtils.js';
 import { elencoPeriodiSenzaConsuntivo, creaConsuntivo } from '../domain/consuntivi.js';
 import { mostraConferma } from '../utils/dialogUtils.js';
 
@@ -224,26 +224,25 @@ function renderZonaCicloCorrente(container, cicliAperti, mappaBudget, fondi, obi
         <button id="btn-storna-apertura-corrente"><i class="fa-solid fa-trash-can"></i> Storna apertura (aperto per errore)</button>
       </div>
     ` : `<button id="btn-valorizza-tutti-default">Valorizza tutti a budget</button>`}
-    <table class="tabella">
-      <thead><tr><th>Budget</th><th>Assegnato</th><th>Riporto</th><th>Disponibilità</th><th></th></tr></thead>
-      <tbody>
-        ${cicliAperti.map((c) => {
-          const budgetNome = mappaBudget.get(c.budgetId)?.nome || '—';
-          const disponibilita = Math.round((c.importoAssegnato + c.riportoIniziale) * 100) / 100;
-          const mostraForm = modalitaBulk || cicloInChiusuraId === c.id;
-          return `
-            <tr>
-              <td>${budgetNome}</td>
-              <td class="numero">${formattaValuta(c.importoAssegnato)}</td>
-              <td class="numero ${c.riportoIniziale < 0 ? 'testo-errore' : ''}">${formattaValuta(c.riportoIniziale)}</td>
-              <td class="numero">${formattaValuta(disponibilita)}</td>
-              <td>${modalitaBulk ? '' : `<div class="azioni-riga"><button class="btn-icona" title="Chiudi Ciclo" data-azione="chiudi" data-id="${c.id}"><i class="fa-solid fa-lock"></i></button></div>`}</td>
-            </tr>
-            ${mostraForm ? `<tr><td colspan="5">${renderFormChiusura(c, budgetNome, fondi, obiettivi)}</td></tr>` : ''}
-          `;
-        }).join('')}
-      </tbody>
-    </table>
+    <div class="lista-metriche">
+      ${cicliAperti.map((c) => {
+        const budgetNome = mappaBudget.get(c.budgetId)?.nome || '—';
+        const disponibilita = Math.round((c.importoAssegnato + c.riportoIniziale) * 100) / 100;
+        const mostraForm = modalitaBulk || cicloInChiusuraId === c.id;
+        return `
+          <div class="riga-metrica" style="flex-wrap:wrap;">
+            <span class="riga-metrica-nome">${budgetNome}</span>
+            <div class="riga-metrica-valori">
+              <span class="riga-metrica-valore"><span class="etichetta">Assegnato</span><span class="numero">${formattaValuta(c.importoAssegnato)}</span></span>
+              <span class="riga-metrica-valore"><span class="etichetta">Riporto</span><span class="numero ${c.riportoIniziale < 0 ? 'negativo' : ''}">${formattaValuta(c.riportoIniziale)}</span></span>
+              <span class="riga-metrica-valore"><span class="etichetta">Disponibilità</span><span class="numero">${formattaValuta(disponibilita)}</span></span>
+            </div>
+            ${modalitaBulk ? '' : `<div class="riga-metrica-azioni"><button class="btn-icona" title="Chiudi Ciclo" data-azione="chiudi" data-id="${c.id}"><i class="fa-solid fa-lock"></i></button></div>`}
+            ${mostraForm ? `<div class="riga-elenco-azioni-dettaglio" style="flex:1 1 100%;">${renderFormChiusura(c, budgetNome, fondi, obiettivi)}</div>` : ''}
+          </div>
+        `;
+      }).join('')}
+    </div>
     ${modalitaBulk ? `
       <div class="form-azioni">
         <button id="btn-conferma-tutte" class="btn-primario">Conferma tutte le chiusure compilate</button>
@@ -477,34 +476,28 @@ function renderStorico(container, cicliChiusi, mappaBudget, idRiapribili) {
   cicli = ordina(cicli, CHIAVI_ORDINAMENTO_STORICO[statoStorico.ordineChiave] || CHIAVI_ORDINAMENTO_STORICO.periodoInizio, statoStorico.ordineDecrescente);
 
   zona.innerHTML = cicli.length === 0 ? '<p class="nota">Nessun Ciclo chiuso ancora.</p>' : `
-    <table class="tabella">
-      <thead><tr>
-        ${intestazioneOrdinabile('Budget', 'budgetNome', statoStorico)}
-        ${intestazioneOrdinabile('Periodo', 'periodoInizio', statoStorico)}
-        <th>Assegnato</th><th>Utilizzato</th>
-        ${intestazioneOrdinabile('Residuo', 'residuo', statoStorico)}
-        <th>Azione</th>
-        <th>Controparte</th>
-        <th></th>
-      </tr></thead>
-      <tbody>
-        ${cicli.map((c) => `
-          <tr>
-            <td>${c._budgetNome}</td>
-            <td>${formattaData(c.periodoInizio)} — ${formattaData(c.periodoFine)}</td>
-            <td class="numero">${formattaValuta(c.importoAssegnato + c.riportoIniziale)}</td>
-            <td class="numero">${formattaValuta(c.importoUtilizzato)}</td>
-            <td class="numero ${c.residuo < 0 ? 'testo-errore' : ''}">${formattaValuta(c.residuo)}</td>
-            <td class="nota-inline">${c.residuoAzione || '—'}</td>
-            <td class="nota-inline">${c.controparteNome ? `${c.controparteTipo === 'obiettivo' ? 'Obiettivo' : 'Fondo'}: ${c.controparteNome}` : '—'}</td>
-            <td>${idRiapribili.has(c.id) ? `<button class="btn-icona" title="Riapri Ciclo" data-azione="riapri" data-id="${c.id}"><i class="fa-solid fa-lock-open"></i></button>` : ''}</td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
+    ${barraOrdinamentoHtml([
+      { chiave: 'budgetNome', etichetta: 'Budget' },
+      { chiave: 'periodoInizio', etichetta: 'Periodo' },
+      { chiave: 'residuo', etichetta: 'Residuo' }
+    ], statoStorico, 'storico-cicli')}
+    <div class="lista-metriche">
+      ${cicli.map((c) => `
+        <div class="riga-metrica">
+          <span class="riga-metrica-nome">${c._budgetNome}<span class="riga-metrica-sotto">${formattaData(c.periodoInizio)} — ${formattaData(c.periodoFine)}${c.controparteNome ? ` · ${c.controparteTipo === 'obiettivo' ? 'Obiettivo' : 'Fondo'}: ${c.controparteNome}` : ''}</span></span>
+          <div class="riga-metrica-valori">
+            <span class="riga-metrica-valore"><span class="etichetta">Assegnato</span><span class="numero">${formattaValuta(c.importoAssegnato + c.riportoIniziale)}</span></span>
+            <span class="riga-metrica-valore"><span class="etichetta">Utilizzato</span><span class="numero">${formattaValuta(c.importoUtilizzato)}</span></span>
+            <span class="riga-metrica-valore"><span class="etichetta">Residuo</span><span class="numero ${c.residuo < 0 ? 'negativo' : ''}">${formattaValuta(c.residuo)}</span></span>
+            ${c.residuoAzione ? `<span class="riga-metrica-valore"><span class="etichetta">Azione</span><span class="numero" style="font-family:var(--font-corpo); font-weight:500;">${c.residuoAzione}</span></span>` : ''}
+          </div>
+          ${idRiapribili.has(c.id) ? `<div class="riga-metrica-azioni"><button class="btn-icona" title="Riapri Ciclo" data-azione="riapri" data-id="${c.id}"><i class="fa-solid fa-lock-open"></i></button></div>` : ''}
+        </div>
+      `).join('')}
+    </div>
   `;
 
-  collegaOrdinamento(zona, statoStorico, () => renderStorico(container, cicliChiusi, mappaBudget, idRiapribili));
+  collegaBarraOrdinamento(zona, statoStorico, 'storico-cicli', () => renderStorico(container, cicliChiusi, mappaBudget, idRiapribili));
 
   zona.querySelectorAll('button[data-azione="riapri"]').forEach((btn) => {
     btn.addEventListener('click', async () => {

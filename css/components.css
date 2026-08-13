@@ -183,30 +183,24 @@
 .checkbox-confronto, .checkbox-riga, .checkbox-quadrata {
   appearance: none;
   -webkit-appearance: none;
-  width: 20px;
-  height: 20px;
+  width: 21px;
+  height: 21px;
   margin: 0;
-  border-radius: 6px;
+  border-radius: 7px;
   border: 1.5px solid var(--colore-bordo-forte);
-  background: var(--colore-sfondo);
+  background-color: var(--colore-sfondo);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 13px 13px;
   cursor: pointer;
-  position: relative;
   flex-shrink: 0;
-  transition: background var(--transizione-rapida), border-color var(--transizione-rapida);
+  transition: background-color var(--transizione-rapida), border-color var(--transizione-rapida);
 }
 .checkbox-confronto:hover, .checkbox-riga:hover, .checkbox-quadrata:hover { border-color: var(--colore-operativita); }
 .checkbox-confronto:checked, .checkbox-riga:checked, .checkbox-quadrata:checked {
-  background: var(--colore-operativita);
+  background-color: var(--colore-operativita);
   border-color: var(--colore-operativita);
-}
-.checkbox-confronto:checked::after, .checkbox-riga:checked::after, .checkbox-quadrata:checked::after {
-  content: '';
-  position: absolute;
-  top: 50%; left: 50%;
-  width: 5px; height: 9px;
-  border: solid #FFFFFF;
-  border-width: 0 2px 2px 0;
-  transform: translate(-50%, -60%) rotate(45deg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M3.5 8.4L6.6 11.5L12.5 4.8' stroke='white' stroke-width='2.1' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 /* ---------- Ricerca ---------- */
@@ -456,6 +450,234 @@
   margin-bottom: var(--spazio-sm);
 }
 .barra-strumenti-movimenti .nota-inline { display: flex; align-items: center; gap: 6px; margin: 0; }
+
+/* ---------- Elenco a righe con testata + azioni (Piano, Prospetti) ---------- */
+/* Pattern generico riusabile per "elemento con nome, badge di stato, riga di icone-azione ed
+   eventuale dettaglio espandibile": stessa filosofia della lista Movimenti (contenitore
+   raggruppato, riga compatta) ma senza l'icona-tipo/l'importo, che qui non hanno senso. */
+
+.lista-azioni-elenco {
+  border: 1px solid var(--colore-bordo);
+  border-radius: var(--raggio-sm);
+  overflow: hidden;
+  background: var(--colore-sfondo);
+}
+.riga-elenco-azioni {
+  padding: 12px;
+  border-bottom: 1px solid var(--colore-bordo);
+}
+.lista-azioni-elenco > .riga-elenco-azioni:last-child { border-bottom: none; }
+
+.riga-elenco-azioni-testata {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.riga-elenco-azioni-titolo {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--colore-testo);
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.riga-elenco-azioni-testata .badge { margin: 0; padding: 3px 9px; font-size: 0.72rem; }
+
+.riga-elenco-azioni-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: var(--colore-testo-soft);
+}
+
+.riga-elenco-azioni-azioni {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-top: 8px;
+}
+
+.riga-elenco-azioni-dettaglio {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--colore-bordo);
+}
+
+/* ---------- Elenco di metriche (Prospetti: Conti a fine Prospetto, Andamento Budget,
+   proiezione Fondi/Obiettivi...) ---------- */
+/* Pattern per "entità con nome + più valori numerici da confrontare": ogni valore ha la sua
+   etichetta sopra il numero, il gruppo si dispone a destra e va a capo su schermi stretti
+   invece di forzare una tabella larga a sforare. */
+
+.lista-metriche {
+  border: 1px solid var(--colore-bordo);
+  border-radius: var(--raggio-sm);
+  overflow: hidden;
+  background: var(--colore-sfondo);
+}
+.riga-metrica {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  padding: 12px;
+  border-bottom: 1px solid var(--colore-bordo);
+}
+.lista-metriche > .riga-metrica:last-child { border-bottom: none; }
+.riga-metrica.totale { background: var(--colore-sfondo-soft); font-weight: 700; }
+
+.riga-metrica-nome {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--colore-testo);
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.riga-metrica-sotto { font-size: 0.76rem; color: var(--colore-testo-debole); font-weight: 400; }
+
+.riga-metrica-valori {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  align-items: flex-start;
+  flex-shrink: 0;
+}
+.riga-metrica-valore {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 64px;
+}
+.riga-metrica-valore .etichetta {
+  font-size: 0.64rem;
+  color: var(--colore-testo-debole);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.riga-metrica-valore .numero {
+  font-family: var(--font-numeri);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 0.86rem;
+  color: var(--colore-testo);
+}
+.riga-metrica-valore .numero.positivo { color: var(--colore-patrimonio); }
+.riga-metrica-valore .numero.negativo { color: var(--colore-avviso); }
+.riga-metrica-azioni { display: flex; gap: 2px; flex-shrink: 0; }
+
+/* ---------- Albero di riepilogo (Piano: "Entrata simulata e riepilogo") ---------- */
+/* Sostituisce una tabella con celle a padding-left crescente (tecnica un po' incerta anche
+   nell'originale) con un vero elenco ad albero: tre livelli (Conto → Fondo/Budget → Obiettivo),
+   ciascuno con un rientro e un peso tipografico decrescente. */
+
+.albero-riepilogo { border: 1px solid var(--colore-bordo); border-radius: var(--raggio-sm); overflow: hidden; background: var(--colore-sfondo); }
+.albero-riga {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--colore-bordo);
+}
+.albero-riepilogo > .albero-riga:last-child { border-bottom: none; }
+.albero-riga.livello-0 { background: var(--colore-sfondo-soft); font-weight: 700; }
+.albero-riga.livello-1 { padding-left: 28px; font-weight: 500; }
+.albero-riga.livello-2 { padding-left: 46px; font-size: 0.82rem; color: var(--colore-testo-soft); }
+.albero-riga-nome { overflow-wrap: anywhere; min-width: 0; }
+.albero-riga-valore { font-family: var(--font-numeri); font-variant-numeric: tabular-nums; font-weight: 600; flex-shrink: 0; }
+
+/* ---------- Tabelle di confronto (Prospetti: Confronto tra più simulazioni) ---------- */
+/* Qui l'informazione è intrinsecamente tabellare (una colonna per Prospetto messo a
+   confronto): impilare le righe come altrove renderebbe impossibile confrontare i valori a
+   colpo d'occhio. Resta una tabella vera anche su mobile, con scroll orizzontale contenuto nel
+   proprio riquadro (mai a livello di pagina) e la prima colonna "congelata" mentre si scorre. */
+
+.scroll-orizzontale {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--colore-bordo);
+  border-radius: var(--raggio-sm);
+}
+.scroll-orizzontale table.tabella-compatta {
+  margin-top: 0;
+  border: none;
+  border-radius: 0;
+  width: auto;
+  min-width: 100%;
+}
+.scroll-orizzontale table.tabella-compatta th:first-child,
+.scroll-orizzontale table.tabella-compatta td:first-child {
+  position: sticky;
+  left: 0;
+  background: var(--colore-sfondo);
+  border-right: 1px solid var(--colore-bordo);
+  white-space: nowrap;
+}
+.scroll-orizzontale table.tabella-compatta th,
+.scroll-orizzontale table.tabella-compatta td {
+  white-space: nowrap;
+}
+
+/* ---------- Elenco editabile (righe di allocazione/distribuzione/ridistribuzione: nome +
+   importo modificabile + azione) ---------- */
+/* Pattern condiviso da tutti i form "dividi un importo tra più destinazioni" dell'app
+   (Allocazione, Distribuzione, Ridistribuzione, Piano→Collega Movimenti, Prospetti→
+   Ridistribuisci): nome a sinistra (si restringe e va a capo), input numerico a larghezza
+   fissa, azione opzionale — mai più una tabella generica per questo scopo. */
+
+.lista-editabile {
+  border: 1px solid var(--colore-bordo);
+  border-radius: var(--raggio-sm);
+  overflow: hidden;
+  background: var(--colore-sfondo);
+}
+.riga-editabile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--colore-bordo);
+  flex-wrap: wrap;
+}
+.lista-editabile > .riga-editabile:last-child { border-bottom: none; }
+
+.riga-editabile-nome {
+  flex: 1 1 160px;
+  min-width: 0;
+  font-size: 0.88rem;
+  color: var(--colore-testo);
+  overflow-wrap: anywhere;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.riga-editabile-nome .nota-inline { margin: 0; }
+
+.riga-editabile input[type="number"] {
+  width: 108px;
+  flex-shrink: 0;
+}
+.riga-editabile-azioni { display: flex; gap: 2px; flex-shrink: 0; }
+.riga-editabile-espandi { margin-left: auto; flex-shrink: 0; }
+.riga-editabile-checkbox { flex-shrink: 0; display: flex; align-items: center; }
+.riga-editabile-dettaglio {
+  flex: 1 1 100%;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--colore-bordo);
+}
 
 .elenco-scelta-azioni { list-style: none; padding: 0; margin-top: var(--spazio-sm); }
 .elenco-scelta-azioni li {
