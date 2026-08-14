@@ -65,7 +65,11 @@
   margin-bottom: var(--spazio-lg);
   box-shadow: 0 4px 14px rgba(75, 79, 222, 0.28);
 }
-.btn-nuovo-movimento:hover { filter: brightness(1.06); }
+/* Bug corretto: la regola globale "button:hover" (base.css) è più specifica di ".btn-nuovo-
+   movimento" da sola (pseudo-classe + elemento batte una singola classe) e sovrascriveva
+   silenziosamente il background, lasciando il testo bianco su uno sfondo quasi bianco.
+   Ridichiarare qui background/border-color rende esplicito che restano quelli del bottone. */
+.btn-nuovo-movimento:hover { filter: brightness(1.06); background: var(--gradiente-accento); border-color: transparent; }
 
 .sidebar-nav {
   display: flex;
@@ -251,5 +255,6 @@
     box-shadow: var(--ombra-elevata);
     z-index: 41;
   }
-  .fab-azioni:hover { filter: brightness(1.05); }
+  /* Stesso bug di specificità di .btn-nuovo-movimento (vedi layout.css sopra): fix identico. */
+  .fab-azioni:hover { filter: brightness(1.05); background: var(--gradiente-accento); border-color: transparent; }
 }

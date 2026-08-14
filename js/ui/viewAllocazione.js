@@ -480,7 +480,16 @@ function renderEsito(container) {
       <p class="nota">Entrata di ${formattaValuta(allocazione.importoEntrata)} allocata il ${allocazione.data.substring(0, 10)}.</p>
       <h3>Operazioni da effettuare</h3>
       <ul class="elenco-semplice">
-        ${istruzioniOperative.map((i) => `<li>☐ ${i.testo}</li>`).join('')}
+        ${istruzioniOperative.map((i) => `
+          <li>
+            <span class="riga-istruzione-testo">☐ ${i.testo}</span>
+            ${i.dettaglio && i.dettaglio.length > 0 ? `
+              <div class="elenco-dettaglio-istruzione">
+                ${i.dettaglio.map((d) => `<span>${d.tipo ? `${d.tipo}: ` : ''}${d.nome} — ${formattaValuta(d.importo)}</span>`).join('')}
+              </div>
+            ` : ''}
+          </li>
+        `).join('')}
       </ul>
       <button id="btn-nuova-entrata" class="btn-primario">Registra un'altra Entrata</button>
     </section>

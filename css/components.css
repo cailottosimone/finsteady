@@ -20,6 +20,11 @@
 
 .pannello h2 { margin-top: 0; }
 
+/* Bottone "Nuovo/Genera X" subito dopo il div della lista (pattern comune a Conti, Fondi,
+   Budget, Categorie, Piano, Consuntivi, Prospetti, Profili): senza questo margine il bottone
+   risultava incollato all'ultima riga della lista, senza respiro visivo. */
+[id^="lista-"] + button { margin-top: var(--spazio-md); }
+
 .nota, .meta {
   color: var(--colore-testo-soft);
   font-size: 0.86rem;
@@ -323,11 +328,25 @@
   padding: var(--spazio-sm) 0;
   border-bottom: 1px solid var(--colore-sfondo-soft);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   font-size: 0.9rem;
 }
 .elenco-semplice li:last-child { border-bottom: none; }
+
+/* Dettaglio esplicativo di un'istruzione operativa (Registra Entrata → riepilogo finale): quali
+   Fondi/Budget/Obiettivi compongono l'importo aggregato per Conto. flex-basis:100% forza il
+   blocco a capo, sotto la riga principale, senza toccare .elenco-semplice li usato altrove. */
+.riga-istruzione-testo { flex: 1 1 auto; }
+.elenco-dettaglio-istruzione {
+  flex: 1 1 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: 22px;
+}
+.elenco-dettaglio-istruzione span { font-size: 0.8rem; color: var(--colore-testo-soft); }
 
 /* ---------- Elenco di dettaglio annidato (es. Budget dentro un Conto espanso in Dashboard) ---------- */
 /* Alternativa leggera a una tabella annidata: evita la doppia trasformazione "tabella dentro

@@ -1,0 +1,114 @@
+/* ============================================================
+   FinSteady — Base (v0.1 redesign)
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: var(--font-corpo);
+  margin: 0;
+  background: var(--colore-pagina);
+  color: var(--colore-testo);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+/* Rete di sicurezza: qualunque testo lungo e non spezzabile (URL, stringhe senza spazi) va
+   sempre a capo dentro il proprio contenitore invece di spingerlo a sforare lateralmente. */
+p, span, div, td, li { overflow-wrap: break-word; }
+img, svg { max-width: 100%; }
+
+h1, h2, h3, h4, h5 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin: 0 0 var(--spazio-xs);
+  color: var(--colore-testo);
+}
+h2 { font-size: 1.05rem; }
+h3 { font-size: 0.98rem; }
+h4 { font-size: 0.9rem; }
+
+p { margin: 0 0 var(--spazio-sm); }
+
+a { color: var(--colore-operativita); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Focus visibile coerente ovunque, tastiera-first: un solo stile, mai lasciato al default del
+   browser (che varia troppo tra Safari/Chrome) né soppresso (accessibilità). */
+:focus-visible {
+  outline: 2px solid var(--colore-operativita);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---------- Bottoni: reset + variante di base ---------- */
+
+button {
+  cursor: pointer;
+  border: 1px solid var(--colore-bordo-forte);
+  background: var(--colore-sfondo);
+  color: var(--colore-testo);
+  border-radius: var(--raggio-sm);
+  padding: 9px 15px;
+  font-size: 0.86rem;
+  font-family: var(--font-corpo);
+  font-weight: 500;
+  line-height: 1.2;
+  transition: border-color var(--transizione-rapida), background var(--transizione-rapida), color var(--transizione-rapida), opacity var(--transizione-rapida);
+}
+button:hover { border-color: var(--colore-testo-debole); background: var(--colore-sfondo-soft); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button:disabled:hover { background: var(--colore-sfondo); border-color: var(--colore-bordo-forte); }
+
+.btn-primario {
+  background: var(--colore-operativita);
+  color: #FFFFFF;
+  border: none;
+  padding: 11px 20px;
+  font-weight: 600;
+}
+.btn-primario:hover { background: var(--colore-operativita-forte); }
+
+.btn-pericoloso {
+  background: var(--colore-avviso);
+  color: #FFFFFF;
+  border: none;
+}
+.btn-pericoloso:hover { background: #C22E3E; }
+
+.btn-testuale {
+  background: none;
+  border: none;
+  color: var(--colore-testo-soft);
+  padding: 9px 10px;
+}
+.btn-testuale:hover { background: var(--colore-sfondo-soft); color: var(--colore-testo); }
+
+/* ---------- Campi form ---------- */
+
+input, select, textarea {
+  font-family: var(--font-corpo);
+  font-size: 0.95rem;
+  color: var(--colore-testo);
+  background: var(--colore-sfondo);
+  border: 1px solid var(--colore-bordo-forte);
+  border-radius: var(--raggio-sm);
+  padding: 10px 12px;
+}
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid var(--colore-operativita);
+  outline-offset: 1px;
+  border-color: var(--colore-operativita);
+}
+input::placeholder { color: var(--colore-testo-debole); }
+
+table { font-family: var(--font-corpo); }

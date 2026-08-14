@@ -5,6 +5,28 @@ Questo file documenta **solo** il ridisegno visivo/UX partito dal repository fun
 storage.js, stessi calcoli, stesse regole. Il `CHANGELOG.md` storico non viene modificato in
 questo giro — confluirà (con dicitura propria) solo se la direzione viene approvata.
 
+## v0.1-007 — Piccole rifiniture
+
+- **Respiro tra liste e bottone "Nuovo X"**: i bottoni tipo "Nuovo Piano"/"Nuovo Conto"/"Genera
+  Consuntivo" ecc. risultavano incollati all'ultima riga della lista sopra. Aggiunta una regola
+  condivisa (`[id^="lista-"] + button` in `components.css`) invece di sistemare vista per vista:
+  copre tutte le 7 viste con questo pattern (Conti, Fondi, Budget, Categorie, Piano, Consuntivi,
+  Profili, Prospetti) con un'unica modifica.
+- **Riepilogo Entrata più esplicativo**: ogni istruzione operativa ("Bonifica X € verso Conto Y")
+  ora mostra anche il dettaglio di come quella cifra si suddivide tra Fondi/Budget/Obiettivi
+  reali all'interno del Conto (es. "Bonifica 600 € verso Risparmio — di cui: Fondo Vacanze:
+  400 €, Fondo Auto: 200 €"). Nuovo campo `dettaglio` su ogni istruzione, calcolato in
+  `domain/allocazioni.js` (`generaIstruzioniOperative`), reso in `viewAllocazione.js`.
+- **Scorciatoia "Vai ai Consuntivi"** dalla vista Ciclo Budget, quando non ci sono Cicli aperti
+  (subito dopo una chiusura): apre direttamente "Strategia & Report" sulla tab Consuntivi.
+  Aggiunta `impostaTabAttivaStrategiaReport()` in `sezioneStrategiaReport.js`, stesso pattern
+  già usato da `impostaTabAttivaImpostazioni()`.
+- **Bugfix — hover bianco su "Nuovo movimento" (sidebar desktop)**: la regola globale
+  `button:hover` (più specifica di `.btn-nuovo-movimento` da sola: pseudo-classe + elemento
+  batte una singola classe) sovrascriveva il background del bottone, lasciando il testo bianco
+  su uno sfondo quasi bianco. Stesso bug, stesso fix, anche sul FAB mobile (`.fab-azioni`), mai
+  segnalato ma identico nel codice.
+
 ## v0.1-006 — Bugfix: vista Consuntivi vuota dopo la generazione
 
 **Bug**: generando un Consuntivo dalla vista Ciclo Budget, la creazione andava a buon fine (lo

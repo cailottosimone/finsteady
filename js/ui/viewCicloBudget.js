@@ -14,6 +14,7 @@ import { formattaValuta } from '../utils/formatCurrency.js';
 import { formattaData } from '../utils/dateUtils.js';
 import { ordina, filtraTesto, barraOrdinamentoHtml, collegaBarraOrdinamento } from '../utils/listaUtils.js';
 import { elencoPeriodiSenzaConsuntivo, creaConsuntivo } from '../domain/consuntivi.js';
+import { impostaTabAttivaStrategiaReport } from './sezioneStrategiaReport.js';
 import { mostraConferma } from '../utils/dialogUtils.js';
 
 let impostazioniEspanse = false;
@@ -187,8 +188,13 @@ function renderZonaCicloCorrente(container, cicliAperti, mappaBudget, fondi, obi
           Il periodo ${formattaData(daFotografare.periodoInizio)} — ${formattaData(daFotografare.periodoFine)} è
           completamente chiuso e non ha ancora un Consuntivo.
         </p>
-        <button id="btn-genera-consuntivo"><i class="fa-solid fa-camera"></i> Genera Consuntivo per questo periodo</button>
-      ` : ''}
+        <div class="azioni-riga">
+          <button id="btn-genera-consuntivo"><i class="fa-solid fa-camera"></i> Genera Consuntivo per questo periodo</button>
+          <button id="btn-vai-consuntivi"><i class="fa-solid fa-arrow-right"></i> Vai ai Consuntivi</button>
+        </div>
+      ` : `
+        <button id="btn-vai-consuntivi"><i class="fa-solid fa-arrow-right"></i> Vai ai Consuntivi</button>
+      `}
       <button id="btn-apri-ciclo" class="btn-primario">Apri Nuovo Ciclo</button>
     `;
     const btnConsuntivo = zona.querySelector('#btn-genera-consuntivo');
@@ -203,6 +209,12 @@ function renderZonaCicloCorrente(container, cicliAperti, mappaBudget, fondi, obi
         }
       });
     }
+    // Scorciatoia richiesta dall'utente: dalla chiusura del Ciclo Budget si arriva direttamente
+    // alla tab Consuntivi di "Strategia & Report", senza passare dalla navigazione principale.
+    zona.querySelector('#btn-vai-consuntivi').addEventListener('click', () => {
+      impostaTabAttivaStrategiaReport('consuntivi');
+      window.mostraVista('strategiaReport');
+    });
     zona.querySelector('#btn-apri-ciclo').addEventListener('click', async () => {
       try {
         const { periodo, cicli } = await apriNuovoCiclo();
