@@ -4,7 +4,7 @@ import {
 } from '../domain/consuntivi.js';
 import { formattaValuta } from '../utils/formatCurrency.js';
 import { formattaData } from '../utils/dateUtils.js';
-import { ordina, filtraTesto, intestazioneOrdinabile, collegaOrdinamento } from '../utils/listaUtils.js';
+import { ordina, filtraTesto, barraOrdinamentoHtml, collegaBarraOrdinamento } from '../utils/listaUtils.js';
 import { mostraConferma } from '../utils/dialogUtils.js';
 
 let consuntivoEspansoId = null;
@@ -85,21 +85,16 @@ async function renderTabella(container, consuntiviCompleti) {
     righeHtml.push(await renderRigaConsuntivo(c));
   }
 
-  lista.innerHTML = `
-    <table class="tabella">
-      <thead><tr>
-        ${intestazioneOrdinabile('Periodo', 'periodoInizio', stato)}
-        ${intestazioneOrdinabile('Creato il', 'dataCreazione', stato)}
-        <th>Note</th>
-        <th></th>
-      </tr></thead>
-      <tbody>
-        ${righeHtml.join('')}
-      </tbody>
-    </table>
+  lista.innerHTML = barraOrdinamentoHtml([
+    { chiave: 'periodoInizio', etichetta: 'Periodo' },
+    { chiave: 'dataCreazione', etichetta: 'Creato il' }
+  ], stato, 'consuntivi') + `
+    <div class="lista-azioni-elenco">
+      ${righeHtml.join('')}
+    </div>
   `;
 
-  collegaOrdinamento(lista, stato, () => renderTabella(container, consuntiviCompleti));
+  collegaBarraOrdinamento(lista, stato, 'consuntivi', () => renderTabella(container, consuntiviCompleti));
 
   lista.querySelectorAll('button[data-azione="espandi"]').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -137,24 +132,24 @@ async function renderTabella(container, consuntiviCompleti) {
 async function renderRigaConsuntivo(c) {
   const espanso = consuntivoEspansoId === c.id;
   return `
-    <tr>
-      <td>${formattaData(c.periodoInizio)} — ${formattaData(c.periodoFine)}</td>
-      <td>${formattaData(c.dataCreazione)}</td>
-      <td class="nota-inline">${c.note || '—'}</td>
-      <td>
-        <div class="azioni-riga">
-          <button class="btn-icona" title="${espanso ? 'Chiudi' : 'Dettaglio'}" data-azione="espandi" data-id="${c.id}">${espanso ? '<i class="fa-solid fa-chevron-up"></i>' : '<i class="fa-solid fa-chevron-down"></i>'}</button>
-          <button class="btn-icona" title="Elimina" data-azione="elimina" data-id="${c.id}"><i class="fa-solid fa-trash"></i></button>
-        </div>
-      </td>
-    </tr>
-    ${espanso ? `
-      <tr>
-        <td colspan="4" style="background:var(--colore-sfondo-soft);">
+    <div class="riga-elenco-azioni">
+      <div class="riga-elenco-azioni-testata">
+        <span class="riga-elenco-azioni-titolo">${formattaData(c.periodoInizio)} — ${formattaData(c.periodoFine)}</span>
+      </div>
+      <div class="riga-elenco-azioni-meta">
+        <span>Creato il ${formattaData(c.dataCreazione)}</span>
+        ${c.note ? `<span>· ${c.note}</span>` : ''}
+      </div>
+      <div class="riga-elenco-azioni-azioni azioni-riga">
+        <button class="btn-icona" title="${espanso ? 'Chiudi' : 'Dettaglio'}" data-azione="espandi" data-id="${c.id}">${espanso ? '<i class="fa-solid fa-chevron-up"></i>' : '<i class="fa-solid fa-chevron-down"></i>'}</button>
+        <button class="btn-icona" title="Elimina" data-azione="elimina" data-id="${c.id}"><i class="fa-solid fa-trash"></i></button>
+      </div>
+      ${espanso ? `
+        <div class="riga-elenco-azioni-dettaglio">
           ${await renderDettaglioConsuntivo(c.id)}
-        </td>
-      </tr>
-    ` : ''}
+        </div>
+      ` : ''}
+    </div>
   `;
 }
 
@@ -169,67 +164,54 @@ async function renderDettaglioConsuntivo(consuntivoId) {
   return `
     <h4>Budget (Operatività)</h4>
     ${righeBudget.length === 0 ? '<p class="nota">Nessun Budget in questo periodo.</p>' : `
-      <table class="tabella">
-        <thead><tr><th>Budget</th><th>Conto</th><th>Assegnato</th><th>Riporto</th><th>Utilizzato</th><th>Avanzo/Sforamento</th><th>Esito</th><th>Controparte</th></tr></thead>
-        <tbody>
-          ${righeBudget.map((r) => `
-            <tr>
-              <td>${r.budgetNome}</td>
-              <td>${r.contoNome}</td>
-              <td class="numero">${formattaValuta(r.importoAssegnato)}</td>
-              <td class="numero ${r.riportoIniziale < 0 ? 'testo-errore' : ''}">${formattaValuta(r.riportoIniziale)}</td>
-              <td class="numero">${formattaValuta(r.importoUtilizzato)}</td>
-              <td class="numero ${r.residuo < 0 ? 'testo-errore' : ''}">${formattaValuta(r.residuo)}</td>
-              <td class="nota-inline">${r.residuoAzione || '—'}</td>
-              <td class="nota-inline">${r.controparteNome ? `${r.controparteTipo === 'obiettivo' ? 'Obiettivo' : 'Fondo'}: ${r.controparteNome}` : '—'}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
+      <div class="lista-metriche">
+        ${righeBudget.map((r) => `
+          <div class="riga-metrica">
+            <span class="riga-metrica-nome">${r.budgetNome}<span class="riga-metrica-sotto">${r.contoNome}${r.controparteNome ? ` · ${r.controparteTipo === 'obiettivo' ? 'Obiettivo' : 'Fondo'}: ${r.controparteNome}` : ''}</span></span>
+            <div class="riga-metrica-valori">
+              <span class="riga-metrica-valore"><span class="etichetta">Assegnato</span><span class="numero">${formattaValuta(r.importoAssegnato)}</span></span>
+              <span class="riga-metrica-valore"><span class="etichetta">Riporto</span><span class="numero ${r.riportoIniziale < 0 ? 'negativo' : ''}">${formattaValuta(r.riportoIniziale)}</span></span>
+              <span class="riga-metrica-valore"><span class="etichetta">Utilizzato</span><span class="numero">${formattaValuta(r.importoUtilizzato)}</span></span>
+              <span class="riga-metrica-valore"><span class="etichetta">${r.residuo < 0 ? 'Sforamento' : 'Avanzo'}</span><span class="numero ${r.residuo < 0 ? 'negativo' : 'positivo'}">${formattaValuta(r.residuo)}</span></span>
+              ${r.residuoAzione ? `<span class="riga-metrica-valore"><span class="etichetta">Esito</span><span class="numero" style="font-family:var(--font-corpo); font-weight:500;">${r.residuoAzione}</span></span>` : ''}
+            </div>
+          </div>
+        `).join('')}
+      </div>
     `}
 
     <h4 style="margin-top:16px;">Fondi e Obiettivi (Patrimonio)</h4>
     ${righeFondo.length === 0 ? '<p class="nota">Nessun Fondo presente in questo periodo.</p>' : `
-      <table class="tabella">
-        <thead><tr><th>Fondo</th><th>Conto</th><th>Saldo</th><th>Avanzamento Obiettivi</th></tr></thead>
-        <tbody>
-          ${righeFondo.map((f) => {
-            const obiettiviDelFondo = mappaObiettiviPerFondo.get(f.fondoId) || [];
-            return `
-              <tr>
-                <td>${f.fondoNome}</td>
-                <td>${f.contoNome}</td>
-                <td class="numero">${formattaValuta(f.saldo)}</td>
-                <td>
-                  ${f.percentuale == null ? '<span class="nota-inline">—</span>' : `
-                    <span class="nota-inline">${formattaValuta(f.saldoAccumulatoTotale)} / ${formattaValuta(f.obiettivoComplessivo)} (${f.percentuale}%)</span>
-                  `}
-                </td>
-              </tr>
+      <div class="lista-metriche">
+        ${righeFondo.map((f) => {
+          const obiettiviDelFondo = mappaObiettiviPerFondo.get(f.fondoId) || [];
+          return `
+            <div class="riga-metrica" style="flex-wrap:wrap;">
+              <span class="riga-metrica-nome">${f.fondoNome}<span class="riga-metrica-sotto">${f.contoNome}</span></span>
+              <div class="riga-metrica-valori">
+                <span class="riga-metrica-valore"><span class="etichetta">Saldo</span><span class="numero">${formattaValuta(f.saldo)}</span></span>
+                ${f.percentuale != null ? `<span class="riga-metrica-valore"><span class="etichetta">Obiettivi</span><span class="numero">${formattaValuta(f.saldoAccumulatoTotale)} / ${formattaValuta(f.obiettivoComplessivo)} (${f.percentuale}%)</span></span>` : ''}
+              </div>
               ${obiettiviDelFondo.length > 0 ? `
-                <tr>
-                  <td colspan="4">
-                    <table class="tabella" style="margin-left:16px;">
-                      <thead><tr><th>Obiettivo</th><th>Scadenza</th><th>Accumulato</th><th>Target</th><th>%</th></tr></thead>
-                      <tbody>
-                        ${obiettiviDelFondo.map((o) => `
-                          <tr>
-                            <td>${o.obiettivoNome}</td>
-                            <td>${formattaData(o.dataPrevista)}</td>
-                            <td class="numero">${formattaValuta(o.saldoAccumulato)}</td>
-                            <td class="numero">${formattaValuta(o.importoTarget)}</td>
-                            <td class="numero">${o.percentuale}%</td>
-                          </tr>
-                        `).join('')}
-                      </tbody>
-                    </table>
-                  </td>
-                </tr>
+                <div class="riga-elenco-azioni-dettaglio" style="flex:1 1 100%;">
+                  <div class="lista-metriche">
+                    ${obiettiviDelFondo.map((o) => `
+                      <div class="riga-metrica">
+                        <span class="riga-metrica-nome">${o.obiettivoNome}<span class="riga-metrica-sotto">Scadenza ${formattaData(o.dataPrevista)}</span></span>
+                        <div class="riga-metrica-valori">
+                          <span class="riga-metrica-valore"><span class="etichetta">Accumulato</span><span class="numero">${formattaValuta(o.saldoAccumulato)}</span></span>
+                          <span class="riga-metrica-valore"><span class="etichetta">Target</span><span class="numero">${formattaValuta(o.importoTarget)}</span></span>
+                          <span class="riga-metrica-valore"><span class="etichetta">%</span><span class="numero">${o.percentuale}%</span></span>
+                        </div>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
               ` : ''}
-            `;
-          }).join('')}
-        </tbody>
-      </table>
+            </div>
+          `;
+        }).join('')}
+      </div>
     `}
   `;
 }

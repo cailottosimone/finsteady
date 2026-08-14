@@ -1,8 +1,13 @@
 /* ============================================================
    FinSteady — Layout / App Shell (v0.1 redesign)
    ============================================================
-   Desktop (≥861px): sidebar fissa a sinistra, contenuto a destra.
-   Mobile (≤860px): topbar sottile in alto + tabbar con le sezioni principali in basso +
+   Desktop (≥861px): shell alta esattamente quanto il viewport (100vh, senza scroll di
+   pagina); sidebar fissa a sinistra e area di contenuto a destra scorrono CIASCUNA per conto
+   proprio, in modo indipendente — non più "sidebar sticky + scroll di pagina" (quel modello,
+   in certe combinazioni di altezza contenuto/finestra, poteva far comparire una scrollbar
+   verticale propria della sidebar, percepita come un difetto).
+   Mobile (≤860px): tornano il flusso di documento normale e lo scroll di pagina classico —
+   topbar sottile in alto (sticky) + tabbar con le sezioni principali in basso (fissa) +
    pulsante "+" flottante per le Azioni rapide.
    Un solo breakpoint per tutta la shell (vedi anche components.css per lo stesso breakpoint
    applicato a tabelle/liste): --soglia-mobile non esiste come variabile CSS (le media query
@@ -13,7 +18,9 @@
 
 .app-shell {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden; /* il contenitore esterno non scorre mai: scorrono solo le due colonne
+                        al suo interno, ciascuna per conto proprio — vedi .sidebar/.contenuto */
 }
 
 /* ---------- Sidebar (desktop) ---------- */
@@ -21,14 +28,12 @@
 .sidebar {
   width: var(--larghezza-sidebar);
   flex-shrink: 0;
+  height: 100%;
   background: var(--colore-sfondo);
   border-right: 1px solid var(--colore-bordo);
   display: flex;
   flex-direction: column;
   padding: var(--spazio-lg) var(--spazio-md);
-  position: sticky;
-  top: 0;
-  height: 100vh;
   overflow-y: auto;
 }
 
@@ -60,7 +65,11 @@
   margin-bottom: var(--spazio-lg);
   box-shadow: 0 4px 14px rgba(75, 79, 222, 0.28);
 }
-.btn-nuovo-movimento:hover { filter: brightness(1.06); }
+/* Bug corretto: la regola globale "button:hover" (base.css) è più specifica di ".btn-nuovo-
+   movimento" da sola (pseudo-classe + elemento batte una singola classe) e sovrascriveva
+   silenziosamente il background, lasciando il testo bianco su uno sfondo quasi bianco.
+   Ridichiarare qui background/border-color rende esplicito che restano quelli del bottone. */
+.btn-nuovo-movimento:hover { filter: brightness(1.06); background: var(--gradiente-accento); border-color: transparent; }
 
 .sidebar-nav {
   display: flex;
@@ -135,10 +144,14 @@
 .contenuto {
   flex: 1;
   min-width: 0;
-  max-width: var(--larghezza-massima-contenuto);
-  margin: 0 auto;
-  width: 100%;
+  height: 100%;
+  overflow-y: auto;
   padding: var(--spazio-xl) var(--spazio-xl) var(--spazio-xxl);
+}
+.contenuto > * {
+  max-width: var(--larghezza-massima-contenuto);
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* ============================================================
@@ -148,7 +161,7 @@
 
   .sidebar { display: none; }
 
-  .app-shell { flex-direction: column; min-height: 0; }
+  .app-shell { flex-direction: column; height: auto; min-height: 100vh; overflow: visible; }
 
   .topbar-mobile {
     display: flex;
@@ -189,6 +202,8 @@
   .topbar-icona-btn:hover { background: var(--colore-sfondo-soft); }
 
   .contenuto {
+    height: auto;
+    overflow-y: visible;
     padding: var(--spazio-md) var(--spazio-md) calc(var(--altezza-tabbar-mobile) + var(--spazio-xxl));
   }
 
@@ -240,5 +255,6 @@
     box-shadow: var(--ombra-elevata);
     z-index: 41;
   }
-  .fab-azioni:hover { filter: brightness(1.05); }
+  /* Stesso bug di specificità di .btn-nuovo-movimento (vedi layout.css sopra): fix identico. */
+  .fab-azioni:hover { filter: brightness(1.05); background: var(--gradiente-accento); border-color: transparent; }
 }

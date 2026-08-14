@@ -10,7 +10,7 @@ import { elencoObiettivi } from '../domain/obiettivi.js';
 import { elencoConti } from '../domain/conti.js';
 import { calcolaRichiestaDaPiano, calcolaPropostaEqua, calcolaPropostaProporzionale } from '../engine/allocationEngine.js';
 import { formattaValuta } from '../utils/formatCurrency.js';
-import { ordina, filtraTesto, intestazioneOrdinabile, collegaOrdinamento } from '../utils/listaUtils.js';
+import { ordina, filtraTesto } from '../utils/listaUtils.js';
 import { mostraConferma, mostraPrompt } from '../utils/dialogUtils.js';
 
 let pianoEspansoId = null;
@@ -75,20 +75,26 @@ async function renderTabella(container, pianiCompleti) {
   }
 
   lista.innerHTML = `
-    <table class="tabella">
-      <thead><tr>
-        ${intestazioneOrdinabile('Nome', 'nome', stato)}
-        <th></th>
-        ${intestazioneOrdinabile('Predefinito', 'attivo', stato)}
-        <th></th>
-      </tr></thead>
-      <tbody>
-        ${piani.map((p) => renderRigaPiano(p)).join('')}
-      </tbody>
-    </table>
+    <div class="barra-strumenti-movimenti">
+      <label class="nota-inline">Ordina per
+        <select id="select-ordina-piani">
+          <option value="nome" ${stato.ordineChiave === 'nome' ? 'selected' : ''}>Nome</option>
+          <option value="attivo" ${stato.ordineChiave === 'attivo' ? 'selected' : ''}>Predefinito</option>
+        </select>
+      </label>
+      <button type="button" id="btn-direzione-ordina-piani" class="btn-icona" title="${stato.ordineDecrescente ? 'Decrescente' : 'Crescente'}">
+        <i class="fa-solid ${stato.ordineDecrescente ? 'fa-arrow-down-wide-short' : 'fa-arrow-up-wide-short'}"></i>
+      </button>
+    </div>
+    <div class="lista-azioni-elenco">
+      ${piani.map((p) => renderRigaPiano(p)).join('')}
+    </div>
   `;
 
-  collegaOrdinamento(lista, stato, () => renderTabella(container, pianiCompleti));
+  const selectOrdina = lista.querySelector('#select-ordina-piani');
+  if (selectOrdina) selectOrdina.addEventListener('change', (e) => { stato.ordineChiave = e.target.value; renderTabella(container, pianiCompleti); });
+  const btnDirezione = lista.querySelector('#btn-direzione-ordina-piani');
+  if (btnDirezione) btnDirezione.addEventListener('click', () => { stato.ordineDecrescente = !stato.ordineDecrescente; renderTabella(container, pianiCompleti); });
 
   lista.querySelectorAll('button[data-azione="attiva"]').forEach((btn) => {
     btn.addEventListener('click', async () => {
@@ -182,30 +188,28 @@ async function renderTabella(container, pianiCompleti) {
 function renderRigaPiano(p) {
   const espanso = pianoEspansoId === p.id;
   return `
-    <tr>
-      <td>${p.nome}</td>
-      <td>${p.bloccato ? '<span class="badge" style="background:#eee;" title="Bloccato: sblocca per modificarne nome o Voci"><i class="fa-solid fa-lock"></i></span>' : ''}</td>
-      <td>${p.attivo ? '<span class="badge badge-ok">Piano attivo</span>' : '—'}</td>
-      <td>
-        <div class="azioni-riga">
-          ${p.attivo ? '' : `<button class="btn-icona" title="Attiva questo Piano (attiva i suoi Budget, disattiva gli altri)" data-azione="attiva" data-id="${p.id}"><i class="fa-regular fa-star"></i></button>`}
-          <button class="btn-icona" title="${espanso ? 'Chiudi' : 'Voci e simulazione'}" data-azione="espandi" data-id="${p.id}">${espanso ? '<i class="fa-solid fa-chevron-up"></i>' : '<i class="fa-solid fa-chevron-down"></i>'}</button>
-          <button class="btn-icona" title="${p.bloccato ? 'Bloccato: sblocca per rinominare' : 'Rinomina'}" data-azione="modifica-piano" data-id="${p.id}" ${p.bloccato ? 'disabled' : ''}><i class="fa-solid fa-pen"></i></button>
-          <button class="btn-icona" title="Duplica (nuova copia indipendente, con le stesse Voci)" data-azione="duplica-piano" data-id="${p.id}"><i class="fa-solid fa-clone"></i></button>
-          ${p.bloccato
-            ? `<button class="btn-icona" title="Sblocca (rendi di nuovo modificabile)" data-azione="sblocca-piano" data-id="${p.id}"><i class="fa-solid fa-lock-open"></i></button>`
-            : `<button class="btn-icona" title="Blocca (impedisce modifiche involontarie a nome e Voci)" data-azione="blocca-piano" data-id="${p.id}"><i class="fa-solid fa-lock"></i></button>`}
-          <button class="btn-icona" title="${p.bloccato ? 'Bloccato: sblocca per eliminare' : 'Elimina'}" data-azione="elimina-piano" data-id="${p.id}" ${p.bloccato ? 'disabled' : ''}><i class="fa-solid fa-trash"></i></button>
-        </div>
-      </td>
-    </tr>
-    ${espanso ? `
-      <tr>
-        <td colspan="4" style="background:var(--colore-sfondo-soft);">
+    <div class="riga-elenco-azioni">
+      <div class="riga-elenco-azioni-testata">
+        <span class="riga-elenco-azioni-titolo">${p.nome}</span>
+        ${p.attivo ? '<span class="badge badge-ok">Piano attivo</span>' : ''}
+        ${p.bloccato ? '<span class="badge" title="Bloccato: sblocca per modificarne nome o Voci"><i class="fa-solid fa-lock"></i> Bloccato</span>' : ''}
+      </div>
+      <div class="riga-elenco-azioni-azioni azioni-riga">
+        ${p.attivo ? '' : `<button class="btn-icona" title="Attiva questo Piano (attiva i suoi Budget, disattiva gli altri)" data-azione="attiva" data-id="${p.id}"><i class="fa-regular fa-star"></i></button>`}
+        <button class="btn-icona" title="${espanso ? 'Chiudi' : 'Voci e simulazione'}" data-azione="espandi" data-id="${p.id}">${espanso ? '<i class="fa-solid fa-chevron-up"></i>' : '<i class="fa-solid fa-chevron-down"></i>'}</button>
+        <button class="btn-icona" title="${p.bloccato ? 'Bloccato: sblocca per rinominare' : 'Rinomina'}" data-azione="modifica-piano" data-id="${p.id}" ${p.bloccato ? 'disabled' : ''}><i class="fa-solid fa-pen"></i></button>
+        <button class="btn-icona" title="Duplica (nuova copia indipendente, con le stesse Voci)" data-azione="duplica-piano" data-id="${p.id}"><i class="fa-solid fa-clone"></i></button>
+        ${p.bloccato
+          ? `<button class="btn-icona" title="Sblocca (rendi di nuovo modificabile)" data-azione="sblocca-piano" data-id="${p.id}"><i class="fa-solid fa-lock-open"></i></button>`
+          : `<button class="btn-icona" title="Blocca (impedisce modifiche involontarie a nome e Voci)" data-azione="blocca-piano" data-id="${p.id}"><i class="fa-solid fa-lock"></i></button>`}
+        <button class="btn-icona" title="${p.bloccato ? 'Bloccato: sblocca per eliminare' : 'Elimina'}" data-azione="elimina-piano" data-id="${p.id}" ${p.bloccato ? 'disabled' : ''}><i class="fa-solid fa-trash"></i></button>
+      </div>
+      ${espanso ? `
+        <div class="riga-elenco-azioni-dettaglio">
           <div id="blocco-voci-${p.id}" class="blocco-obiettivi" style="border-top:none; margin-top:0; padding-top:0;"></div>
-        </td>
-      </tr>
-    ` : ''}
+        </div>
+      ` : ''}
+    </div>
   `;
 }
 
@@ -227,23 +231,27 @@ async function collegaBlocccoVoci(container, piano) {
 
   blocco.innerHTML = `
     ${piano.bloccato ? '<p class="badge badge-errore" style="display:block;"><i class="fa-solid fa-lock"></i> Piano bloccato: sblocca (pulsante lucchetto nella riga) per modificare nome o Voci.</p>' : ''}
-    <table class="tabella">
-      <thead><tr><th>Destinazione</th><th>Tipo</th><th>Modalità</th><th>Valore</th><th>Priorità</th><th>Note</th><th>Collegamento</th><th></th></tr></thead>
-      <tbody>
+    ${voci.length === 0 ? '<p class="nota">Nessuna Voce configurata.</p>' : `
+      <div class="lista-azioni-elenco">
         ${voci.map((v) => `
-          <tr>
-            <td>${nomeDestinazione(v)}</td>
-            <td>${v.tipoDestinazione}</td>
-            <td>${v.modalitaImporto}</td>
-            <td>${v.modalitaImporto === 'percentuale' ? v.valore + '%' : formattaValuta(v.valore)}</td>
-            <td>${v.priorita}</td>
-            <td class="nota-inline">${v.note || '—'}</td>
-            <td>${v.collegamentoTipo ? `<span class="nota-inline">da ${v.collegamentoTipo}</span>` : '<span class="nota-inline">indipendente</span>'}</td>
-            <td><button class="btn-icona" title="Elimina" data-azione="elimina-voce" data-id="${v.id}" ${piano.bloccato ? 'disabled' : ''}><i class="fa-solid fa-trash"></i></button></td>
-          </tr>
+          <div class="riga-elenco-azioni">
+            <div class="riga-elenco-azioni-testata">
+              <span class="riga-elenco-azioni-titolo">${nomeDestinazione(v)}</span>
+              <span class="badge">${v.tipoDestinazione}</span>
+            </div>
+            <div class="riga-elenco-azioni-meta">
+              <span>${v.modalitaImporto === 'percentuale' ? v.valore + '%' : formattaValuta(v.valore)} (${v.modalitaImporto})</span>
+              <span>· Priorità ${v.priorita}</span>
+              <span>· ${v.collegamentoTipo ? `da ${v.collegamentoTipo}` : 'indipendente'}</span>
+              ${v.note ? `<span>· ${v.note}</span>` : ''}
+            </div>
+            <div class="riga-elenco-azioni-azioni azioni-riga">
+              <button class="btn-icona" title="Elimina" data-azione="elimina-voce" data-id="${v.id}" ${piano.bloccato ? 'disabled' : ''}><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </div>
         `).join('')}
-      </tbody>
-    </table>
+      </div>
+    `}
     <div class="azioni-riga" style="margin-top:8px;">
       <button id="btn-nuova-voce-${pianoId}" ${piano.bloccato ? 'disabled title="Piano bloccato: sblocca per aggiungere Voci"' : ''}><i class="fa-solid fa-plus"></i> Nuova Voce manuale</button>
       <button id="btn-collega-movimenti-${pianoId}" ${piano.bloccato ? 'disabled title="Piano bloccato: sblocca per collegare movimenti"' : ''}><i class="fa-solid fa-link"></i> Collega Movimenti</button>
@@ -320,38 +328,35 @@ async function collegaBlocccoVoci(container, piano) {
         ? `<p class="badge badge-ok">Copertura completa. Residuo non allocato: ${formattaValuta(residuo)}</p>`
         : `<p class="badge badge-errore">⚠️ Entrata insufficiente: mancano ${formattaValuta(calcolo.mancante)} per coprire tutte le voci.</p>`}
       ${gruppiPerConto.length === 0 ? '<p class="nota">Nessuna destinazione da riepilogare.</p>' : `
-        <table class="tabella" style="margin-top:8px;">
-          <thead><tr><th>Conto / Destinazione</th><th>Importo</th></tr></thead>
-          <tbody>
-            ${gruppiPerConto.map((g) => {
-              const totaleConto = arrotondaLocale(g.righe.reduce((s, r) => s + r.importo, 0));
-              return `
-                <tr style="font-weight:600; background:var(--colore-sfondo-soft);">
-                  <td>${g.conto.nome}</td>
-                  <td class="numero">${formattaValuta(totaleConto)}</td>
-                </tr>
-                ${g.righe.map((r) => `
-                  <tr>
-                    <td style="padding-left:24px;">${r.tipo === 'budget' ? 'Budget: ' : r.tipo === 'liquidita' ? '' : 'Fondo: '}${r.nome}</td>
-                    <td class="numero">${formattaValuta(r.importo)}</td>
-                  </tr>
-                  ${r.sotto.map((s) => `
-                    <tr>
-                      <td style="padding-left:48px;" class="nota-inline">Obiettivo: ${s.nome}</td>
-                      <td class="numero nota-inline">${formattaValuta(s.importo)}</td>
-                    </tr>
-                  `).join('')}
+        <div class="albero-riepilogo" style="margin-top:8px;">
+          ${gruppiPerConto.map((g) => {
+            const totaleConto = arrotondaLocale(g.righe.reduce((s, r) => s + r.importo, 0));
+            return `
+              <div class="albero-riga livello-0">
+                <span class="albero-riga-nome">${g.conto.nome}</span>
+                <span class="albero-riga-valore">${formattaValuta(totaleConto)}</span>
+              </div>
+              ${g.righe.map((r) => `
+                <div class="albero-riga livello-1">
+                  <span class="albero-riga-nome">${r.tipo === 'budget' ? 'Budget: ' : r.tipo === 'liquidita' ? '' : 'Fondo: '}${r.nome}</span>
+                  <span class="albero-riga-valore">${formattaValuta(r.importo)}</span>
+                </div>
+                ${r.sotto.map((s) => `
+                  <div class="albero-riga livello-2">
+                    <span class="albero-riga-nome">Obiettivo: ${s.nome}</span>
+                    <span class="albero-riga-valore">${formattaValuta(s.importo)}</span>
+                  </div>
                 `).join('')}
-              `;
-            }).join('')}
-            ${residuo > 0.005 ? `
-              <tr style="font-weight:600; border-top: 2px solid var(--colore-bordo-forte);">
-                <td>Residuo non allocato</td>
-                <td class="numero">${formattaValuta(residuo)}</td>
-              </tr>
-            ` : ''}
-          </tbody>
-        </table>
+              `).join('')}
+            `;
+          }).join('')}
+          ${residuo > 0.005 ? `
+            <div class="albero-riga livello-0">
+              <span class="albero-riga-nome">Residuo non allocato</span>
+              <span class="albero-riga-valore">${formattaValuta(residuo)}</span>
+            </div>
+          ` : ''}
+        </div>
       `}
     `;
     };
@@ -538,18 +543,15 @@ function renderDettaglioFondoCollega(dettaglio, fondo, obiettiviFondo) {
         <option value="manuale" ${s.strategia === 'manuale' ? 'selected' : ''}>Manuale</option>
       </select>
     </label>
-    <table class="tabella" style="margin-top:8px;">
-      <thead><tr><th></th><th>Obiettivo</th><th>Importo</th></tr></thead>
-      <tbody>
-        ${obiettiviFondo.map((o) => `
-          <tr>
-            <td><input type="checkbox" class="checkbox-obiettivo-fondo" data-obiettivo-id="${o.id}" ${s.obiettiviSelezionati.has(o.id) ? 'checked' : ''}></td>
-            <td>${o.nome}</td>
-            <td><input type="number" step="any" class="input-importo-obiettivo-fondo" data-obiettivo-id="${o.id}" value="0"></td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
+    <div class="lista-editabile" style="margin-top:8px;">
+      ${obiettiviFondo.map((o) => `
+        <div class="riga-editabile">
+          <span class="riga-editabile-checkbox"><input type="checkbox" class="checkbox-obiettivo-fondo checkbox-quadrata" data-obiettivo-id="${o.id}" ${s.obiettiviSelezionati.has(o.id) ? 'checked' : ''}></span>
+          <span class="riga-editabile-nome">${o.nome}</span>
+          <input type="number" step="any" class="input-importo-obiettivo-fondo" data-obiettivo-id="${o.id}" value="0">
+        </div>
+      `).join('')}
+    </div>
   `;
 
   aggiornaValoriRigheFondoCollega(dettaglio, fondo, obiettiviFondo);

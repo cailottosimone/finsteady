@@ -103,7 +103,7 @@ async function renderDettaglioConto(container, conto) {
         <button id="btn-proporzionale-fondi" type="button">Proporzionale (per Obiettivo complessivo)</button>
         <button id="btn-piano-fondi" type="button">Da Piano</button>
       </div>
-      ${blocchiFondo.join('')}
+      <div class="lista-editabile">${blocchiFondo.join('')}</div>
       <p class="${validoGlobale ? '' : 'testo-errore'}">
         Assegnato ai Fondi: ${formattaValuta(totaleNuovo)} — Liquidità libera risultante: ${formattaValuta(liquiditaResiduaNuova)}
         ${validoGlobale ? '' : ' — stai assegnando più del saldo del Conto'}
@@ -226,18 +226,14 @@ async function renderRigaFondo(container, r, conto) {
         <button type="button" data-azione="proporzionale-obiettivi" data-fondo-id="${r.fondoId}">Proporzionale (per Target)</button>
         <button type="button" data-azione="piano-obiettivi" data-fondo-id="${r.fondoId}">Da Piano</button>
       </div>
-      <table class="tabella">
-        <thead><tr><th>Obiettivo</th><th>Attuale</th><th>Nuovo</th></tr></thead>
-        <tbody>
-          ${righeObiettivi.map((ro, i) => `
-            <tr>
-              <td>${ro.nome}</td>
-              <td class="numero">${formattaValuta(ro.vecchio)}</td>
-              <td><input type="number" step="any" data-fondo="${r.fondoId}" data-i="${i}" class="input-nuovo-obiettivo" value="${ro.nuovo}" style="width:100px;"></td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
+      <div class="lista-editabile">
+        ${righeObiettivi.map((ro, i) => `
+          <div class="riga-editabile">
+            <span class="riga-editabile-nome">${ro.nome}<span class="nota-inline">attuale ${formattaValuta(ro.vecchio)}</span></span>
+            <input type="number" step="any" data-fondo="${r.fondoId}" data-i="${i}" class="input-nuovo-obiettivo" value="${ro.nuovo}">
+          </div>
+        `).join('')}
+      </div>
       <p class="nota-inline ${validoFondo ? '' : 'testo-errore'}">
         Assegnato agli Obiettivi: ${formattaValuta(totaleObiettivi)} / Nuovo saldo Fondo: ${formattaValuta(nuovoSaldoFondo)} —
         non assegnato: ${formattaValuta(nonAssegnato)}${validoFondo ? '' : ' (supera il nuovo saldo del Fondo)'}
@@ -246,14 +242,13 @@ async function renderRigaFondo(container, r, conto) {
   }
 
   return `
-    <div class="riga-obiettivo" style="border-bottom:1px solid var(--colore-bordo);">
+    <div class="riga-editabile" style="flex-direction:column; align-items:stretch;">
       <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-        <strong style="min-width:160px;">${r.nome}</strong>
-        <span class="nota-inline">attuale ${formattaValuta(r.vecchio)}</span>
-        <input type="number" step="any" data-fondo-id="${r.fondoId}" class="input-nuovo-fondo" value="${r.nuovo}" style="width:100px;">
-        <button data-azione="espandi-fondo" data-fondo-id="${r.fondoId}" style="margin-left:auto;">${espanso ? 'Chiudi' : 'Obiettivi'}</button>
+        <span class="riga-editabile-nome"><strong>${r.nome}</strong><span class="nota-inline">attuale ${formattaValuta(r.vecchio)}</span></span>
+        <input type="number" step="any" data-fondo-id="${r.fondoId}" class="input-nuovo-fondo" value="${r.nuovo}">
+        <button data-azione="espandi-fondo" data-fondo-id="${r.fondoId}" class="riga-editabile-espandi">${espanso ? 'Chiudi' : 'Obiettivi'}</button>
       </div>
-      ${espanso ? `<div style="margin-top:10px;" data-blocco-obiettivi="${r.fondoId}">${blocchettoObiettivi}</div>` : ''}
+      ${espanso ? `<div class="riga-editabile-dettaglio" data-blocco-obiettivi="${r.fondoId}">${blocchettoObiettivi}</div>` : ''}
     </div>
   `;
 }

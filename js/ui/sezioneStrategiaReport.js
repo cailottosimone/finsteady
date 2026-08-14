@@ -10,6 +10,13 @@ import { renderBarraTab } from '../utils/tabsUtils.js';
 
 let tabAttiva = 'piano';
 
+// Permette ad altre viste (es. Ciclo Budget, dopo la chiusura) di aprire "Strategia & Report"
+// direttamente sulla tab desiderata, invece di lasciare sempre l'ultima usata — stesso pattern
+// già in uso in js/ui/viewImpostazioni.js con impostaTabAttivaImpostazioni().
+export function impostaTabAttivaStrategiaReport(chiave) {
+  tabAttiva = chiave;
+}
+
 export async function renderStrategiaReport(container) {
   container.innerHTML = `<div id="tab-strategia-report"></div>`;
 

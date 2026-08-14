@@ -11,7 +11,7 @@ import {
 import { calcolaDatiObiettivo, calcolaDatiFondo } from '../engine/obiettivoCalc.js';
 import { formattaValuta } from '../utils/formatCurrency.js';
 import { formattaData } from '../utils/dateUtils.js';
-import { ordina, filtraTesto, intestazioneOrdinabile, collegaOrdinamento } from '../utils/listaUtils.js';
+import { ordina, filtraTesto, barraOrdinamentoHtml, collegaBarraOrdinamento } from '../utils/listaUtils.js';
 import { mostraConferma } from '../utils/dialogUtils.js';
 import { apriModaleVista, chiudiModaleVista } from '../components/modaleVista.js';
 
@@ -106,23 +106,17 @@ async function renderTabella(container, fondiCompleti, conti, categorie, tuttiGl
     righeHtml.push(await renderRigaFondo(f, obiettiviDelFondo));
   }
 
-  lista.innerHTML = `
-    <table class="tabella">
-      <thead><tr>
-        ${intestazioneOrdinabile('Nome', 'nome', stato)}
-        ${intestazioneOrdinabile('Conto', 'contoNome', stato)}
-        ${intestazioneOrdinabile('Saldo', 'saldo', stato)}
-        <th>Avanzamento Obiettivi</th>
-        <th>Stato</th>
-        <th></th>
-      </tr></thead>
-      <tbody>
-        ${righeHtml.join('')}
-      </tbody>
-    </table>
+  lista.innerHTML = barraOrdinamentoHtml([
+    { chiave: 'nome', etichetta: 'Nome' },
+    { chiave: 'contoNome', etichetta: 'Conto' },
+    { chiave: 'saldo', etichetta: 'Saldo' }
+  ], stato, 'fondi') + `
+    <div class="lista-azioni-elenco">
+      ${righeHtml.join('')}
+    </div>
   `;
 
-  collegaOrdinamento(lista, stato, () => renderTabella(container, fondiCompleti, conti, categorie, tuttiGliObiettivi));
+  collegaBarraOrdinamento(lista, stato, 'fondi', () => renderTabella(container, fondiCompleti, conti, categorie, tuttiGliObiettivi));
   collegaEventiLista(container, lista, fondi, conti, categorie);
 }
 
@@ -133,39 +127,39 @@ async function renderRigaFondo(f, obiettiviDelFondo) {
   const datiFondo = calcolaDatiFondo(f, obiettiviDelFondo);
 
   return `
-    <tr style="${archiviato ? 'opacity:0.6;' : ''}">
-      <td>${f.nome}</td>
-      <td>${f._contoNome || '—'}</td>
-      <td class="numero">${formattaValuta(f.saldo)}</td>
-      <td>
-        ${datiFondo.percentuale == null ? '<span class="nota-inline">—</span>' : `
-          <div class="barra-avanzamento" style="width:100px;">
+    <div class="riga-elenco-azioni" style="${archiviato ? 'opacity:0.6;' : ''}">
+      <div class="riga-elenco-azioni-testata">
+        <span class="riga-elenco-azioni-titolo">${f.nome}</span>
+        <span class="badge ${archiviato ? '' : 'badge-ok'}">${archiviato ? 'Archiviato' : 'Attivo'}</span>
+      </div>
+      <div class="riga-elenco-azioni-meta">
+        <span>${f._contoNome || '—'}</span>
+        <span>· Saldo ${formattaValuta(f.saldo)}</span>
+      </div>
+      ${datiFondo.percentuale != null ? `
+        <div style="margin-top:6px; max-width:280px;">
+          <div class="barra-avanzamento">
             <div class="barra-avanzamento-riempimento" style="width:${datiFondo.percentuale}%"></div>
           </div>
           <span class="nota-inline">${formattaValuta(datiFondo.saldoAccumulatoTotale)} / ${formattaValuta(datiFondo.obiettivoComplessivo)} (${datiFondo.percentuale}%)</span>
-        `}
-      </td>
-      <td>${archiviato ? '<span class="badge" style="background:#eee;">Archiviato</span>' : 'Attivo'}</td>
-      <td>
-        <div class="azioni-riga">
-          <button class="btn-icona" title="${espanso ? 'Chiudi' : 'Obiettivi'}" data-azione="espandi" data-id="${f.id}">${espanso ? '<i class="fa-solid fa-chevron-up"></i>' : '<i class="fa-solid fa-chevron-down"></i>'}</button>
-          <button class="btn-icona" title="Modifica" data-azione="modifica" data-id="${f.id}"><i class="fa-solid fa-pen"></i></button>
-          <button class="btn-icona" title="Duplica (nuovo Fondo con gli stessi Obiettivi, saldo a zero, nessun collegamento)" data-azione="duplica" data-id="${f.id}"><i class="fa-solid fa-clone"></i></button>
-          ${archiviato
-            ? `<button class="btn-icona" title="Riattiva" data-azione="riattiva" data-id="${f.id}"><i class="fa-solid fa-undo"></i></button>`
-            : `<button class="btn-icona" title="Chiudi anno" data-azione="chiudi-anno" data-id="${f.id}"><i class="fa-solid fa-lock"></i></button>
-               <button class="btn-icona" title="Archivia" data-azione="archivia" data-id="${f.id}"><i class="fa-solid fa-archive"></i></button>`}
-          <button class="btn-icona" title="Elimina" data-azione="elimina" data-id="${f.id}"><i class="fa-solid fa-trash"></i></button>
         </div>
-      </td>
-    </tr>
-    ${espanso ? `
-      <tr>
-        <td colspan="6" style="background:var(--colore-sfondo-soft);">
+      ` : ''}
+      <div class="riga-elenco-azioni-azioni azioni-riga">
+        <button class="btn-icona" title="${espanso ? 'Chiudi' : 'Obiettivi'}" data-azione="espandi" data-id="${f.id}">${espanso ? '<i class="fa-solid fa-chevron-up"></i>' : '<i class="fa-solid fa-chevron-down"></i>'}</button>
+        <button class="btn-icona" title="Modifica" data-azione="modifica" data-id="${f.id}"><i class="fa-solid fa-pen"></i></button>
+        <button class="btn-icona" title="Duplica (nuovo Fondo con gli stessi Obiettivi, saldo a zero, nessun collegamento)" data-azione="duplica" data-id="${f.id}"><i class="fa-solid fa-clone"></i></button>
+        ${archiviato
+          ? `<button class="btn-icona" title="Riattiva" data-azione="riattiva" data-id="${f.id}"><i class="fa-solid fa-undo"></i></button>`
+          : `<button class="btn-icona" title="Chiudi anno" data-azione="chiudi-anno" data-id="${f.id}"><i class="fa-solid fa-lock"></i></button>
+             <button class="btn-icona" title="Archivia" data-azione="archivia" data-id="${f.id}"><i class="fa-solid fa-archive"></i></button>`}
+        <button class="btn-icona" title="Elimina" data-azione="elimina" data-id="${f.id}"><i class="fa-solid fa-trash"></i></button>
+      </div>
+      ${espanso ? `
+        <div class="riga-elenco-azioni-dettaglio">
           ${renderObiettivi(f, obiettivi)}
-        </td>
-      </tr>
-    ` : ''}
+        </div>
+      ` : ''}
+    </div>
   `;
 }
 
@@ -305,37 +299,34 @@ function renderObiettivi(fondo, obiettivi) {
   return `
     <div class="blocco-obiettivi" style="border-top:none; margin-top:0; padding-top:0;">
       ${obiettivi.length === 0 ? '<p class="nota">Nessun Obiettivo in questo Fondo.</p>' : `
-        <table class="tabella">
-          <thead><tr>
-            <th>Obiettivo</th><th>Scadenza</th><th>Accumulato / Target</th><th>Mancante</th><th>Consigliato/mese</th><th>Mesi rimanenti</th><th></th>
-          </tr></thead>
-          <tbody>
-            ${obiettivi.map((o) => {
-              const calc = calcolaDatiObiettivo(o);
-              return `
-                <tr>
-                  <td>${o.nome}</td>
-                  <td>${formattaData(o.dataPrevista)}</td>
-                  <td>
-                    <div class="barra-avanzamento" style="margin-bottom:4px;">
-                      <div class="barra-avanzamento-riempimento" style="width:${calc.percentuale}%"></div>
-                    </div>
-                    <span class="nota-inline">${formattaValuta(o.saldoAccumulato)} / ${formattaValuta(o.importoTarget)} (${calc.percentuale}%)</span>
-                  </td>
-                  <td class="numero">${formattaValuta(calc.importoMancante)}</td>
-                  <td class="numero">${formattaValuta(calc.importoMensileConsigliato)}</td>
-                  <td>${calc.mesiRimanenti}</td>
-                  <td style="white-space:nowrap;">
-                    <div class="azioni-riga" style="flex-wrap: nowrap;">
-                      <button class="btn-icona" title="Modifica" data-azione="modifica-obiettivo" data-id="${o.id}" data-fondo-id="${fondo.id}"><i class="fa-solid fa-pen"></i></button>
-                      <button class="btn-icona" title="Elimina" data-azione="elimina-obiettivo" data-id="${o.id}"><i class="fa-solid fa-trash"></i></button>
-                    </div>
-                  </td>
-                </tr>
-              `;
-            }).join('')}
-          </tbody>
-        </table>
+        <div class="lista-azioni-elenco">
+          ${obiettivi.map((o) => {
+            const calc = calcolaDatiObiettivo(o);
+            return `
+              <div class="riga-elenco-azioni">
+                <div class="riga-elenco-azioni-testata">
+                  <span class="riga-elenco-azioni-titolo">${o.nome}</span>
+                  <span class="badge">Scadenza ${formattaData(o.dataPrevista)}</span>
+                </div>
+                <div style="margin-top:4px; max-width:280px;">
+                  <div class="barra-avanzamento">
+                    <div class="barra-avanzamento-riempimento" style="width:${calc.percentuale}%"></div>
+                  </div>
+                  <span class="nota-inline">${formattaValuta(o.saldoAccumulato)} / ${formattaValuta(o.importoTarget)} (${calc.percentuale}%)</span>
+                </div>
+                <div class="riga-elenco-azioni-meta">
+                  <span>Mancante ${formattaValuta(calc.importoMancante)}</span>
+                  <span>· Consigliato/mese ${formattaValuta(calc.importoMensileConsigliato)}</span>
+                  <span>· ${calc.mesiRimanenti} mesi rimanenti</span>
+                </div>
+                <div class="riga-elenco-azioni-azioni azioni-riga">
+                  <button class="btn-icona" title="Modifica" data-azione="modifica-obiettivo" data-id="${o.id}" data-fondo-id="${fondo.id}"><i class="fa-solid fa-pen"></i></button>
+                  <button class="btn-icona" title="Elimina" data-azione="elimina-obiettivo" data-id="${o.id}"><i class="fa-solid fa-trash"></i></button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
       `}
       <div class="azioni-riga" style="margin-top:8px;">
         <button data-azione="nuovo-obiettivo" data-fondo-id="${fondo.id}"><i class="fa-solid fa-plus"></i> Nuovo Obiettivo</button>

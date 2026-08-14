@@ -55,3 +55,28 @@ export function collegaOrdinamento(container, stato, onCambio) {
     });
   });
 }
+
+// Barra "Ordina per" + direzione, per gli elenchi a righe (non tabellari) che hanno sostituito
+// le tabelle generiche: stessa idea di intestazioneOrdinabile/collegaOrdinamento ma senza <th>
+// su cui cliccare. opzioni: [{ chiave, etichetta }, ...].
+export function barraOrdinamentoHtml(opzioni, stato, idSuffix) {
+  return `
+    <div class="barra-strumenti-movimenti">
+      <label class="nota-inline">Ordina per
+        <select id="select-ordina-${idSuffix}">
+          ${opzioni.map((o) => `<option value="${o.chiave}" ${stato.ordineChiave === o.chiave ? 'selected' : ''}>${o.etichetta}</option>`).join('')}
+        </select>
+      </label>
+      <button type="button" id="btn-direzione-ordina-${idSuffix}" class="btn-icona" title="${stato.ordineDecrescente ? 'Decrescente' : 'Crescente'}">
+        <i class="fa-solid ${stato.ordineDecrescente ? 'fa-arrow-down-wide-short' : 'fa-arrow-up-wide-short'}"></i>
+      </button>
+    </div>
+  `;
+}
+
+export function collegaBarraOrdinamento(container, stato, idSuffix, onCambio) {
+  const select = container.querySelector(`#select-ordina-${idSuffix}`);
+  if (select) select.addEventListener('change', (e) => { stato.ordineChiave = e.target.value; onCambio(); });
+  const btn = container.querySelector(`#btn-direzione-ordina-${idSuffix}`);
+  if (btn) btn.addEventListener('click', () => { stato.ordineDecrescente = !stato.ordineDecrescente; onCambio(); });
+}

@@ -43,14 +43,44 @@ async function risolviContoMovimento(riga) {
   throw new Error('Tipo di destinazione riga non riconosciuto.');
 }
 
+// Nome ed etichetta leggibile della destinazione di una singola riga (usato solo per il
+// dettaglio esplicativo delle istruzioni operative, mai per la logica di calcolo).
+async function etichettaDestinazioneRiga(r) {
+  if (r.tipoDestinazione === 'fondo') {
+    const f = await dbGet('fondi', r.destinazioneId);
+    return { tipo: 'Fondo', nome: f ? f.nome : '(Fondo eliminato)' };
+  }
+  if (r.tipoDestinazione === 'budget') {
+    const b = await dbGet('budget', r.destinazioneId);
+    return { tipo: 'Budget', nome: b ? b.nome : '(Budget eliminato)' };
+  }
+  if (r.tipoDestinazione === 'obiettivo') {
+    const o = await dbGet('obiettivi', r.destinazioneId);
+    return { tipo: 'Obiettivo', nome: o ? o.nome : '(Obiettivo eliminato)' };
+  }
+  if (r.tipoDestinazione === 'conto') {
+    return { tipo: null, nome: 'Liquidità diretta sul Conto' };
+  }
+  return { tipo: null, nome: 'Disponibilità residua non allocata' }; // residuo_conto
+}
+
 // Genera l'elenco di istruzioni operative (§3.12 FDD): raggruppa le righe per Conto di
 // destinazione. Se il Conto coincide con quello di origine, l'istruzione è "mantieni";
-// altrimenti è "bonifica verso".
+// altrimenti è "bonifica verso". Ogni istruzione porta con sé anche il "dettaglio": le singole
+// righe che compongono quel totale (es. un bonifico verso un Conto può derivare da più Fondi/
+// Budget insieme) — segnalato dall'utente: il totale aggregato per Conto nascondeva come quella
+// cifra fosse a sua volta suddivisa tra le destinazioni reali all'interno del Conto.
 async function generaIstruzioniOperative(contoOrigineId, righeConConto) {
   const totaliPerConto = new Map();
+  const dettaglioPerConto = new Map();
   for (const r of righeConConto) {
     const attuale = totaliPerConto.get(r.contoMovimentoId) || 0;
     totaliPerConto.set(r.contoMovimentoId, attuale + Number(r.importo));
+
+    const { tipo, nome } = await etichettaDestinazioneRiga(r);
+    const dettaglio = dettaglioPerConto.get(r.contoMovimentoId) || [];
+    dettaglio.push({ tipo, nome, importo: Number(r.importo) });
+    dettaglioPerConto.set(r.contoMovimentoId, dettaglio);
   }
 
   const istruzioni = [];
@@ -58,10 +88,11 @@ async function generaIstruzioniOperative(contoOrigineId, righeConConto) {
     if (importo <= 0) continue;
     const conto = await dbGet('conti', contoId);
     const nomeConto = conto ? conto.nome : 'Conto sconosciuto';
+    const dettaglio = dettaglioPerConto.get(contoId) || [];
     if (contoId === contoOrigineId) {
-      istruzioni.push({ tipo: 'mantieni', contoId, testo: `Mantieni ${importo.toFixed(2)} € sul Conto ${nomeConto}` });
+      istruzioni.push({ tipo: 'mantieni', contoId, testo: `Mantieni ${importo.toFixed(2)} € sul Conto ${nomeConto}`, dettaglio });
     } else {
-      istruzioni.push({ tipo: 'bonifica', contoId, testo: `Bonifica ${importo.toFixed(2)} € verso ${nomeConto}` });
+      istruzioni.push({ tipo: 'bonifica', contoId, testo: `Bonifica ${importo.toFixed(2)} € verso ${nomeConto}`, dettaglio });
     }
   }
   return istruzioni;

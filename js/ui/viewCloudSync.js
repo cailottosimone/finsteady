@@ -173,19 +173,22 @@ async function renderAreaCollegata(corpo, utente) {
       zonaDisponibili.innerHTML = '<p class="nota">Nessun Profilo cloud disponibile.</p>';
     } else {
       zonaDisponibili.innerHTML = `
-        <table class="tabella">
-          <thead><tr><th>Nome</th><th>Ultimo aggiornamento</th><th>Record</th><th></th></tr></thead>
-          <tbody>
-            ${profiliCloud.map((p) => `
-              <tr>
-                <td>${p.nome}</td>
-                <td>${formattaDataOra(p.updatedAt)}</td>
-                <td class="numero">${p.numeroRecord ?? '-'}</td>
-                <td><button data-azione="scarica-profilo-cloud" data-cloud-id="${p.cloudId}" data-nome="${p.nome}">Scarica come nuovo Profilo</button></td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
+        <div class="lista-azioni-elenco">
+          ${profiliCloud.map((p) => `
+            <div class="riga-elenco-azioni">
+              <div class="riga-elenco-azioni-testata">
+                <span class="riga-elenco-azioni-titolo">${p.nome}</span>
+              </div>
+              <div class="riga-elenco-azioni-meta">
+                <span>Aggiornato ${formattaDataOra(p.updatedAt)}</span>
+                <span>· ${p.numeroRecord ?? '-'} record</span>
+              </div>
+              <div class="riga-elenco-azioni-azioni">
+                <button data-azione="scarica-profilo-cloud" data-cloud-id="${p.cloudId}" data-nome="${p.nome}">Scarica come nuovo Profilo</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
       `;
       zonaDisponibili.querySelectorAll('button[data-azione="scarica-profilo-cloud"]').forEach((btn) => {
         btn.addEventListener('click', async () => {
