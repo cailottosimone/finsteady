@@ -5,6 +5,24 @@ Questo file documenta **solo** il ridisegno visivo/UX partito dal repository fun
 storage.js, stessi calcoli, stesse regole. Il `CHANGELOG.md` storico non viene modificato in
 questo giro — confluirà (con dicitura propria) solo se la direzione viene approvata.
 
+## v0.1-006 — Bugfix: vista Consuntivi vuota dopo la generazione
+
+**Bug**: generando un Consuntivo dalla vista Ciclo Budget, la creazione andava a buon fine (lo
+storno dell'apertura veniva correttamente bloccato, segno che il record esisteva già in
+IndexedDB), ma la vista Consuntivi non mostrava nulla.
+
+**Causa radice**: in `js/ui/viewConsuntivi.js` l'import da `listaUtils.js` era rimasto al vecchio
+`intestazioneOrdinabile`/`collegaOrdinamento` (sostituiti in v0.1-005, vedi sotto), mentre il
+corpo della funzione era già stato aggiornato per chiamare `barraOrdinamentoHtml`/
+`collegaBarraOrdinamento` — mai importate in questo file. Con zero Consuntivi il ramo "Nessun
+Consuntivo trovato" evitava il problema; appena c'era almeno un Consuntivo, `renderTabella`
+lanciava un `ReferenceError` non gestito (la vista viene invocata senza `await`/`catch` dal
+router di `sezioneStrategiaReport.js`), quindi la lista restava vuota senza alcun errore
+visibile. Nessuna altra vista è affetta: tutte le altre già importavano correttamente
+`barraOrdinamentoHtml`/`collegaBarraOrdinamento`.
+
+**Fix**: corretto solo l'import in `js/ui/viewConsuntivi.js`. Nessuna altra riga toccata.
+
 ## v0.1-005 — Tutto su misura: zero tabelle generiche rimaste in tutta l'app
 
 Richiesta esplicita: finire il lavoro ovunque, non solo su Piano/Prospetti/Movimenti. Censite e

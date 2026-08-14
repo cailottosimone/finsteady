@@ -4,7 +4,7 @@ import {
 } from '../domain/consuntivi.js';
 import { formattaValuta } from '../utils/formatCurrency.js';
 import { formattaData } from '../utils/dateUtils.js';
-import { ordina, filtraTesto, intestazioneOrdinabile, collegaOrdinamento } from '../utils/listaUtils.js';
+import { ordina, filtraTesto, barraOrdinamentoHtml, collegaBarraOrdinamento } from '../utils/listaUtils.js';
 import { mostraConferma } from '../utils/dialogUtils.js';
 
 let consuntivoEspansoId = null;
